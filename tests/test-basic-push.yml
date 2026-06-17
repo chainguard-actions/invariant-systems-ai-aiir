@@ -1,0 +1,76 @@
+name: Test basic push event (no signing)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+      GITHUB_REPOSITORY: test-owner/test-repo
+      GITHUB_SHA: 0000000000000000000000000000000000000001
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Ensure Python 3.11 is available
+        run: |
+          if ! python3.11 --version 2>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y python3.11 python3.11-venv
+          fi
+          python3.11 --version
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: "HEAD~1..HEAD"
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          ACTUAL: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $ACTUAL"
+          if ! echo "$ACTUAL" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert ai_commit_count is a non-negative integer
+        env:
+          ACTUAL: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "ai_commit_count: $ACTUAL"
+          if ! echo "$ACTUAL" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: ai_commit_count is not a non-negative integer: '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert signed_receipt_count is 0 when sign is false
+        env:
+          SIGNED_COUNT: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $SIGNED_COUNT"
+          if [ -n "$SIGNED_COUNT" ] && [ "$SIGNED_COUNT" != "0" ]; then
+            echo "FAIL: expected signed_receipt_count to be 0 when sign=false, got '$SIGNED_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_json is valid JSON or empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#ACTUAL}"
+          if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "OVERFLOW" ]; then
+            if ! echo "$ACTUAL" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
+              echo "FAIL: receipts_json is not valid JSON"
+              exit 1
+            fi
+          fi
+          echo "PASS"

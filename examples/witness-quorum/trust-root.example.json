@@ -1,0 +1,42 @@
+{
+  "schema": "aiir.trust.v1",
+  "logs": [
+    {
+      "name": "rekor.sigstore.dev",
+      "log_id": "rekor-v2-public",
+      "checkpoint_key_id": "20eabaf2",
+      "public_key_type": "ed25519",
+      "public_key_b64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA="
+    }
+  ],
+  "witnesses": [
+    {
+      "name": "omniwitness-public",
+      "key_id": "c1f30cc7",
+      "public_key_type": "ed25519",
+      "public_key_b64": "KSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQUJDREVGR0g=",
+      "min_version": 1
+    },
+    {
+      "name": "acme-release-primary",
+      "key_id": "cce04cd3",
+      "public_key_type": "ed25519",
+      "public_key_b64": "UVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3A=",
+      "min_version": 1
+    },
+    {
+      "name": "acme-release-secondary",
+      "key_id": "f19f3944",
+      "public_key_type": "ed25519",
+      "public_key_b64": "eXp7fH1+f4CBgoOEhYaHiImKi4yNjo+QkZKTlJWWl5g=",
+      "min_version": 1
+    }
+  ],
+  "policy": {
+    "require_witnesses": {
+      "default": "0-of-0",
+      "release": "2-of-3"
+    },
+    "max_future_skew_seconds": 300
+  }
+}

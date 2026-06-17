@@ -1,0 +1,17 @@
+{
+    "$schema": "https://invariantsystems.io/schemas/aiir/policy.v1.schema.json",
+    "$comment": "AIIR policy preset: balanced — practical defaults for OSS and team projects",
+    "description": "OSS maintainer / standard team — practical defaults",
+    "require_signing": false,
+    "max_ai_percent": 80.0,
+    "require_provenance_repo": false,
+    "max_unsigned_receipts": -1,
+    "require_schema_valid": false,
+    "enforcement": "soft-fail",
+    "allowed_authorship_classes": [
+        "human",
+        "ai_assisted",
+        "ai_generated",
+        "bot"
+    ]
+}

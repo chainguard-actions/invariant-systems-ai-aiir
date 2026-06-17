@@ -1,0 +1,80 @@
+name: Test pull request event simulation
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/1/merge
+      GITHUB_HEAD_REF: feature-branch
+      GITHUB_BASE_REF: main
+      GITHUB_REPOSITORY: test-owner/test-repo
+      GITHUB_SHA: 0000000000000000000000000000000000000001
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Ensure Python 3.11 is available
+        run: |
+          if ! python3.11 --version 2>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y python3.11 python3.11-venv
+          fi
+          python3.11 --version
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          # Provide an explicit commit-range since PR base/head SHAs are not
+          # available in the act environment (no real PR event payload)
+          commit-range: "HEAD~1..HEAD"
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          ACTUAL: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $ACTUAL"
+          if ! echo "$ACTUAL" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_overflow is false or empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipts_overflow: $ACTUAL"
+          if [ "$ACTUAL" = "true" ]; then
+            echo "FAIL: receipts_overflow should not be true for a small commit range"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert signed_receipt_count is 0 when sign is false
+        env:
+          ACTUAL: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $ACTUAL"
+          if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "0" ]; then
+            echo "FAIL: expected signed_receipt_count=0 when sign=false, got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_json is valid JSON array or empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#ACTUAL}"
+          if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "OVERFLOW" ]; then
+            if ! echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); assert isinstance(data, list)" 2>/dev/null; then
+              echo "FAIL: receipts_json is not a valid JSON array"
+              exit 1
+            fi
+          fi
+          echo "PASS"

@@ -1,0 +1,794 @@
+{
+  "$schema": "https://invariantsystems.io/schemas/aiir/unicode_evasion_vectors.v1",
+  "description": "AIIR Unicode evasion test vectors. Each vector contains a homoglyph, invisible character, or Unicode edge case. Conforming implementations MUST produce identical canonical_json, content_hash, and receipt_id for each vector's input_core.",
+  "spec_version": "2.0.0",
+  "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+  "generated_at": "2026-03-25T00:00:00Z",
+  "count": 8,
+  "vectors": [
+    {
+      "id": "uni-01-cyrillic-a-homoglyph",
+      "description": "Author name with Cyrillic '\u0430' (U+0430) instead of Latin 'a' \u2014 visually identical, different bytes, different hash",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\u0430lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"\\u0430lice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "605b6def5b5ccc39fc19bb3dadb58fe6a4a37147f2f303d5f05bd6ce71a342cd",
+        "content_hash": "sha256:605b6def5b5ccc39fc19bb3dadb58fe6a4a37147f2f303d5f05bd6ce71a342cd",
+        "receipt_id": "g1-605b6def5b5ccc39fc19bb3dadb58fe6",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6566d0b06c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637470666561743a206164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "799bfa21c4fdec1fc1dc1c7c2a3f9ee5bcb5c93906da6899325952291bb8cdb3",
+        "cbor_length": 934
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\u0430lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-605b6def5b5ccc39fc19bb3dadb58fe6",
+        "content_hash": "sha256:605b6def5b5ccc39fc19bb3dadb58fe6a4a37147f2f303d5f05bd6ce71a342cd",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "Canonical JSON with ensure_ascii=True encodes U+0430 as \\u0430. A naive implementation that doesn't escape non-ASCII would produce a different hash."
+    },
+    {
+      "id": "uni-02-greek-alpha-homoglyph",
+      "description": "Subject with Greek '\u0391' (U+0391) instead of Latin 'A' \u2014 homoglyph in commit subject changes hash",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: \u0391dd widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: \\u0391dd widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "6662141f192ce9a99ff05f9d041b2065371ee0e5dbb3f063ea354d8649e045db",
+        "content_hash": "sha256:6662141f192ce9a99ff05f9d041b2065371ee0e5dbb3f063ea354d8649e045db",
+        "receipt_id": "g1-6662141f192ce9a99ff05f9d041b2065",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637471666561743a20ce9164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "a9b823f794a71a9c9c0cff36f314c2c809db2c18cd0caef556abecc4738511cc",
+        "cbor_length": 934
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: \u0391dd widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-6662141f192ce9a99ff05f9d041b2065",
+        "content_hash": "sha256:6662141f192ce9a99ff05f9d041b2065371ee0e5dbb3f063ea354d8649e045db",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "After NFKC normalization, U+0391 stays as U+0391 (Greek Alpha). This is a different codepoint than Latin 'A' (U+0041). Detection normalization (TR39 confusable resolution) maps it to 'A' for signal matching, but the canonical JSON preserves the original bytes."
+    },
+    {
+      "id": "uni-03-fullwidth-latin-homoglyph",
+      "description": "Author name with fullwidth '\uff21' (U+FF21) instead of ASCII 'A' \u2014 NFKC normalizes this to ASCII 'A' but canonical JSON preserves original bytes",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\uff21lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"\\uff21lice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "b2cff43449895ca03a757618027037721867c3fcdc6539def3315fb8b3403b53",
+        "content_hash": "sha256:b2cff43449895ca03a757618027037721867c3fcdc6539def3315fb8b3403b53",
+        "receipt_id": "g1-b2cff43449895ca03a75761802703772",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6567efbca16c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637470666561743a206164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "7f429ef5751492fade5776f43c890144ec5681d40cd09237c5feb2d2142fa7c1",
+        "cbor_length": 935
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\uff21lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-b2cff43449895ca03a75761802703772",
+        "content_hash": "sha256:b2cff43449895ca03a757618027037721867c3fcdc6539def3315fb8b3403b53",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "NFKC normalization converts U+FF21 to U+0041 (ASCII A). But canonical JSON operates on the ORIGINAL string, not the normalized form. Implementations must not NFKC-normalize before hashing."
+    },
+    {
+      "id": "uni-04-cherokee-a-homoglyph",
+      "description": "Author name with Cherokee '\u13aa' (U+13AA) instead of Latin 'A' \u2014 obscure homoglyph",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\u13aalice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"\\u13aalice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "8e0185832a213d7251e1a0f5c5425f1b66ce429252be04d93c2a4e7908a3af51",
+        "content_hash": "sha256:8e0185832a213d7251e1a0f5c5425f1b66ce429252be04d93c2a4e7908a3af51",
+        "receipt_id": "g1-8e0185832a213d7251e1a0f5c5425f1b",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6567e18eaa6c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637470666561743a206164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "59d35d06ed3e31904ffa6e7a7f59e8739e5472d68f733e3f819e71a4fa6a2c63",
+        "cbor_length": 935
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "\u13aalice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-8e0185832a213d7251e1a0f5c5425f1b",
+        "content_hash": "sha256:8e0185832a213d7251e1a0f5c5425f1b66ce429252be04d93c2a4e7908a3af51",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "Cherokee A is a less common confusable. Tests that ensure_ascii encoding handles Supplementary Multilingual Plane characters via \\uXXXX escaping."
+    },
+    {
+      "id": "uni-05-zero-width-joiner",
+      "description": "Subject with zero-width joiner (U+200D) between words \u2014 invisible but changes hash",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add\u200dwidget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add\\u200dwidget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "6f6a93dd8faaeef76898de01df04dea1aeb4fea7cb6d0d6748be742a37cf1e65",
+        "content_hash": "sha256:6f6a93dd8faaeef76898de01df04dea1aeb4fea7cb6d0d6748be742a37cf1e65",
+        "receipt_id": "g1-6f6a93dd8faaeef76898de01df04dea1",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637472666561743a20616464e2808d77696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "db56d8d01817c8d35e35b4d69f27a1fafd3851ffe3274047247663eba842630a",
+        "cbor_length": 935
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add\u200dwidget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-6f6a93dd8faaeef76898de01df04dea1",
+        "content_hash": "sha256:6f6a93dd8faaeef76898de01df04dea1aeb4fea7cb6d0d6748be742a37cf1e65",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "ZWJ is invisible in most renderers. The canonical JSON encodes it as \\u200d. An implementation that strips invisible chars before hashing will get a different hash."
+    },
+    {
+      "id": "uni-06-soft-hyphen",
+      "description": "Author name with soft hyphen (U+00AD) \u2014 invisible in most fonts, changes hash",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Al\u00adice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Al\\u00adice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "fc96836a8e29f99b80a6a35079e00124e003c2b158f3108032fdb2e2a14f0a6d",
+        "content_hash": "sha256:fc96836a8e29f99b80a6a35079e00124e003c2b158f3108032fdb2e2a14f0a6d",
+        "receipt_id": "g1-fc96836a8e29f99b80a6a35079e00124",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6567416cc2ad69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637470666561743a206164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "8f4ac6f487c3ed3f774a756b03ea4f5fa2880cd8c97ceaaf81822edce0dbe953",
+        "cbor_length": 935
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Al\u00adice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-fc96836a8e29f99b80a6a35079e00124",
+        "content_hash": "sha256:fc96836a8e29f99b80a6a35079e00124e003c2b158f3108032fdb2e2a14f0a6d",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "Soft hyphen is often stripped by display layers but must be preserved in canonical JSON for correct hashing."
+    },
+    {
+      "id": "uni-07-combining-grave-accent",
+      "description": "Author name with combining grave accent (U+0300) on 'A' \u2014 not the precomposed '\u00c0' (U+00C0)",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "A\u0300lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"A\\u0300lice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "d2a02cb1aa22ae0ed99dfe98f0fcd8e58a8d622f06418c9d9f9c97d5a96779c8",
+        "content_hash": "sha256:d2a02cb1aa22ae0ed99dfe98f0fcd8e58a8d622f06418c9d9f9c97d5a96779c8",
+        "receipt_id": "g1-d2a02cb1aa22ae0ed99dfe98f0fcd8e5",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d656741cc806c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637470666561743a206164642077696467657469636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "dcff0614b0c9ee74d375f2ecf92757231837a61b874d3b71ee12dd0ce6dbf074",
+        "cbor_length": 935
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "A\u0300lice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-d2a02cb1aa22ae0ed99dfe98f0fcd8e5",
+        "content_hash": "sha256:d2a02cb1aa22ae0ed99dfe98f0fcd8e58a8d622f06418c9d9f9c97d5a96779c8",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "NFC normalization would compose A+U+0300 into U+00C0 (\u00c0). Canonical JSON must NOT NFC-normalize; it preserves the decomposed form. The hash differs from a receipt that used precomposed \u00c0."
+    },
+    {
+      "id": "uni-08-variation-selector",
+      "description": "Subject with variation selector VS16 (U+FE0F) appended \u2014 invisible modifier, changes hash",
+      "input_core": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget\ufe0f",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\\ufe0f\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+        "canonical_json_sha256": "eb9015ccc9e455bc12b7dab65a4995ee9a6c1ca72620375ff3f51a7a77e0462e",
+        "content_hash": "sha256:eb9015ccc9e455bc12b7dab65a4995ee9a6c1ca72620375ff3f51a7a77e0462e",
+        "receipt_id": "g1-eb9015ccc9e455bc12b7dab65a4995ee",
+        "cbor_hex": "a564636f7265a6647479706573616969722e636f6d6d69745f7265636569707466636f6d6d6974a8637368617828616161616161616161616161616161616161616161616161616161616161616161616161616161616566696c657381697769646765742e707966617574686f72a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d677375626a65637473666561743a2061646420776964676574efb88f69636f6d6d6974746572a3646461746574323032362d30332d30395430303a30303a30305a646e616d6565416c69636565656d61696c71616c696365406578616d706c652e636f6d69646966665f6861736878477368613235363a613962376263376232396632326138623161653231336334313035643733633339623965336632313864373562623661323838323037633164383662393666656c6d6573736167655f6861736878477368613235363a333735616361326335613731633766666161613063333630326564306638326432373938366365303737366235633563316263326432613536333862313862626d66696c65735f6368616e6765640166736368656d6176616969722f636f6d6d69745f726563656970742e76316776657273696f6e66312e302e31326a70726f76656e616e6365a364746f6f6c783368747470733a2f2f6769746875622e636f6d2f696e76617269616e742d73797374656d732d61692f6169697240312e302e31326967656e657261746f7268616969722e636c696a7265706f7369746f7279781f68747470733a2f2f6769746875622e636f6d2f6578616d706c652f7265706f6e61695f6174746573746174696f6ea86c7369676e616c5f636f756e74006e69735f61695f617574686f726564f46f69735f626f745f617574686f726564f470617574686f72736869705f636c6173736568756d616e70626f745f7369676e616c5f636f756e740070646574656374696f6e5f6d6574686f646c6865757269737469635f7632707369676e616c735f64657465637465648074626f745f7369676e616c735f646574656374656480646b696e647818616969722e636f6d6d69745f726563656970742e636f7265647479706575616969722e63616e6f6e6963616c5f6f626a65637466736368656d617818616969722f63616e6f6e6963616c5f6f626a6563742e76316d6f626a6563745f736368656d6176616969722f636f6d6d69745f726563656970742e7631",
+        "cbor_sha256": "f0c0c8450537abb37936a9c8efd5940e3b52a22acbfccc82c59313582bfba40a",
+        "cbor_length": 936
+      },
+      "full_receipt": {
+        "type": "aiir.commit_receipt",
+        "schema": "aiir/commit_receipt.v1",
+        "version": "1.0.12",
+        "commit": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "author": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "committer": {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "date": "2026-03-09T00:00:00Z"
+          },
+          "subject": "feat: add widget\ufe0f",
+          "message_hash": "sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb",
+          "diff_hash": "sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe",
+          "files_changed": 1,
+          "files": [
+            "widget.py"
+          ]
+        },
+        "ai_attestation": {
+          "is_ai_authored": false,
+          "signals_detected": [],
+          "signal_count": 0,
+          "is_bot_authored": false,
+          "bot_signals_detected": [],
+          "bot_signal_count": 0,
+          "authorship_class": "human",
+          "detection_method": "heuristic_v2"
+        },
+        "provenance": {
+          "repository": "https://github.com/example/repo",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.0.12",
+          "generator": "aiir.cli"
+        },
+        "receipt_id": "g1-eb9015ccc9e455bc12b7dab65a4995ee",
+        "content_hash": "sha256:eb9015ccc9e455bc12b7dab65a4995ee9a6c1ca72620375ff3f51a7a77e0462e",
+        "timestamp": "2026-03-25T00:00:00Z",
+        "extensions": {}
+      },
+      "implementation_notes": "Variation selectors are invisible in plain text contexts but change the byte content. Implementations must preserve them in canonical JSON."
+    }
+  ]
+}

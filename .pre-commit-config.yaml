@@ -1,0 +1,67 @@
+# AIIR pre-commit hooks — security scanning + preflight + dogfood receipting.
+# Install:  pre-commit install && pre-commit install --hook-type post-commit --hook-type pre-push
+#
+# Hooks run in three phases:
+#   pre-commit:  gitleaks (secret scan) + ruff (lint/format) + bandit (SAST)
+#   pre-push:    pytest + version-sync + package-smoke (ci-local.sh required)
+#   post-commit: AIIR receipt generation (dogfood)
+repos:
+  # ── Secret scanning ──────────────────────────────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks — secret scanning
+        stages: [pre-commit]
+
+  # ── Linting + formatting ─────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        name: ruff — lint
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        name: ruff — format check
+
+  # ── Static security analysis ─────────────────────────────────────
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        name: bandit — SAST
+        args: [-r, -ll, --skip, B101]  # -ll = MEDIUM+, skip assert warnings
+        files: ^aiir/
+
+  # ── Version drift check ────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: sync-version
+        name: sync-version — check version drift
+        entry: python scripts/sync-version.py --check
+        language: python
+        always_run: true
+        stages: [pre-commit]
+        pass_filenames: false
+
+  # ── Pre-push preflight ───────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: ci-preflight
+        name: ci-preflight — local CI gate
+        entry: scripts/ci-local.sh required
+        language: script
+        always_run: true
+        stages: [pre-push]
+        pass_filenames: false
+
+  # ── AIIR dogfood ─────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: aiir
+        name: AIIR — AI Integrity Receipts
+        entry: python -m aiir --ledger .aiir/ --output .aiir/receipts/ --quiet --skip-receipt-only-commits
+        language: python
+        always_run: true
+        stages: [post-commit]
+        pass_filenames: false

@@ -1,0 +1,182 @@
+name: "AIIR — AI Integrity Receipts"
+description: "Generate and verify cryptographic receipts for commits with declared AI involvement. Receipt, verify, attest."
+author: "Invariant Systems, Inc."
+branding:
+  icon: "shield"
+  color: "blue"
+inputs:
+  ai-only:
+    description: "Only receipt AI-authored commits (Copilot, ChatGPT, Claude, etc.)"
+    required: false
+    default: "false"
+  commit-range:
+    description: "Commit range to receipt (default: the commits in the current push/PR)"
+    required: false
+    default: ""
+  output-dir:
+    description: "Directory to write individual receipt JSON files (default: receipts appear in step summary and outputs only)"
+    required: false
+    default: ""
+  sign:
+    description: "Sign receipts with Sigstore keyless signing (requires id-token: write permission). Set to 'false' to opt out."
+    required: false
+    default: "true"
+outputs:
+  receipt_count:
+    description: "Number of receipts generated"
+    value: ${{ steps.receipt.outputs.receipt_count }}
+  ai_commit_count:
+    description: "Number of AI-authored commits detected"
+    value: ${{ steps.receipt.outputs.ai_commit_count }}
+  signed_receipt_count:
+    description: "Number of signed receipts generated"
+    value: ${{ steps.receipt.outputs.signed_receipt_count }}
+  unsigned_receipt_count:
+    description: "Number of unsigned receipts generated"
+    value: ${{ steps.receipt.outputs.unsigned_receipt_count }}
+  receipts_json:
+    description: "JSON array of all generated receipts (set to OVERFLOW if >1 MB)"
+    value: ${{ steps.receipt.outputs.receipts_json }}
+  receipts_overflow:
+    description: "'true' when receipts_json exceeded 1 MB and was truncated"
+    value: ${{ steps.receipt.outputs.receipts_overflow }}
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        # Use Python 3.11+ (3.9 reached EOL Oct 2025).
+        # The CLI still supports 3.9 via requires-python, but the Action
+        # runner should use a supported, security-patched interpreter.
+        python-version: "3.11"
+    - name: Determine commit range
+      id: range
+      shell: bash
+      env:
+        INPUT_COMMIT_RANGE: ${{ inputs.commit-range }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+        PUSH_AFTER: ${{ github.event.after }}
+      run: |
+        # Use cryptographically random delimiter (not 15-bit $RANDOM)
+        # Fallback to Python if openssl is unavailable (self-hosted runners)
+        DELIM="ghadelimiter_$(openssl rand -hex 16 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(16))')"
+        if [ -n "$INPUT_COMMIT_RANGE" ]; then
+          RANGE="$INPUT_COMMIT_RANGE"
+        elif [ "$EVENT_NAME" = "pull_request" ]; then
+          RANGE="${PR_BASE_SHA}..${PR_HEAD_SHA}"
+        elif [ "$EVENT_NAME" = "push" ]; then
+          # Detect first push (null SHA).  HEAD~1 fails on single-commit
+          # repos, so compare against the empty tree to receipt all files.
+          if [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          elif ! git cat-file -e "$PUSH_BEFORE" 2>/dev/null; then
+            # Force-push or history rewrite — the before SHA no longer
+            # exists in the fetched history.  Fall back to HEAD~1..HEAD
+            # so we still receipt at least the tip commit.
+            echo "::warning::Before SHA ${PUSH_BEFORE:0:12} not reachable (force-push/rebase?). Falling back to HEAD~1..HEAD."
+            RANGE="HEAD~1..HEAD"
+          else
+            RANGE="${PUSH_BEFORE}..${PUSH_AFTER}"
+          fi
+        else
+          RANGE="HEAD~1..HEAD"
+        fi
+
+        # ── Input validation (self-healing) ──
+        # Reject ranges that could cause shell injection or unbounded work.
+        # Only hex SHAs, HEAD, HEAD~N, tag names, and .. separators are valid.
+        if echo "$RANGE" | grep -qE '[;&|$`\\]|[[:cntrl:]]'; then
+          echo "::error::Commit range contains forbidden characters: ${RANGE:0:80}"
+          exit 1
+        fi
+        # Warn (but don't fail) on suspiciously large ranges
+        COMMIT_COUNT=$(git rev-list --count "$RANGE" 2>/dev/null || echo "0")
+        if [ "$COMMIT_COUNT" -gt 500 ]; then
+          echo "::warning::Large commit range ($COMMIT_COUNT commits). Receipting may take a while. Max is 1000."
+        fi
+
+        {
+          echo "range<<${DELIM}"
+          echo "$RANGE"
+          echo "${DELIM}"
+        } >> "$GITHUB_OUTPUT"
+    - name: Install Sigstore
+      if: inputs.sign == 'true'
+      shell: bash
+      # Hash-pinned install from .github/requirements/sigstore.txt (single source of truth)
+      env:
+        SIGSTORE_REQS: ${{ github.action_path }}/.github/requirements/sigstore.txt
+      run: pip install --require-hashes -r "$SIGSTORE_REQS"
+    - name: Generate receipts
+      id: receipt
+      shell: bash
+      env:
+        INPUT_AI_ONLY: ${{ inputs.ai-only }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_SIGN: ${{ inputs.sign }}
+        COMMIT_RANGE: ${{ steps.range.outputs.range }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        ARGS=("--range" "$COMMIT_RANGE" "--github-action")
+
+        if [ "$INPUT_AI_ONLY" = "true" ]; then
+          ARGS+=("--ai-only")
+        fi
+
+        if [ -n "$INPUT_OUTPUT_DIR" ]; then
+          ARGS+=("--output" "$INPUT_OUTPUT_DIR")
+        fi
+
+        if [ "$INPUT_SIGN" = "true" ]; then
+          # Signing requires file output; auto-set output-dir if not provided
+          if [ -z "$INPUT_OUTPUT_DIR" ]; then
+            ARGS+=("--output" ".aiir-receipts")
+          fi
+          ARGS+=("--sign")
+        fi
+
+        # Use -m aiir (module mode) with PYTHONPATH so that
+        # `from aiir import __version__` resolves correctly.  Running
+        # cli.py directly as a script puts aiir/ on sys.path[0], which
+        # makes the 'aiir' package unfindable → ModuleNotFoundError.
+        # -P flag (Python 3.11+) prevents CWD from being
+        # prepended to sys.path. Without it, a malicious repo that
+        # includes its own aiir/ package can shadow the action's code
+        # and achieve arbitrary code execution on the CI runner.
+        PYTHONPATH="$ACTION_PATH" python -P -m aiir "${ARGS[@]}"
+    # P0+P3: The check run (aiir/verify) and PR comment are posted
+    # automatically by the CLI when --github-action is set and
+    # GITHUB_TOKEN is available. Grant your workflow:
+    #   permissions:
+    #     checks: write
+    #     pull-requests: write
+    - name: Upload receipt artifacts
+      if: inputs.output-dir != '' || inputs.sign == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: aiir-receipts
+        path: |
+          ${{ inputs.output-dir || '.aiir-receipts' }}
+        retention-days: 90

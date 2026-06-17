@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/trust_root.v1.schema.json",
+  "title": "AIIR Trust Root v1",
+  "description": "Offline trust root for Rekor checkpoints and witness cosignatures.",
+  "type": "object",
+  "required": ["schema", "logs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "aiir.trust.v1"
+    },
+    "logs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LogKey"
+      }
+    },
+    "witnesses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/WitnessKey"
+      },
+      "default": []
+    },
+    "policy": {
+      "$ref": "#/$defs/Policy"
+    }
+  },
+  "$defs": {
+    "KeyName": {
+      "type": "string",
+      "pattern": "^[^\\s+]+$"
+    },
+    "KeyId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$"
+    },
+    "PublicKeyB64": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "LogKey": {
+      "type": "object",
+      "required": ["name", "public_key_type", "public_key_b64"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/KeyName"
+        },
+        "log_id": {
+          "type": "string"
+        },
+        "checkpoint_key_id": {
+          "$ref": "#/$defs/KeyId"
+        },
+        "public_key_type": {
+          "const": "ed25519"
+        },
+        "public_key_b64": {
+          "$ref": "#/$defs/PublicKeyB64"
+        }
+      }
+    },
+    "WitnessKey": {
+      "type": "object",
+      "required": ["name", "public_key_type", "public_key_b64"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/KeyName"
+        },
+        "key_id": {
+          "$ref": "#/$defs/KeyId"
+        },
+        "public_key_type": {
+          "const": "ed25519"
+        },
+        "public_key_b64": {
+          "$ref": "#/$defs/PublicKeyB64"
+        },
+        "min_version": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      }
+    },
+    "Policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_witnesses": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)-of-(0|[1-9][0-9]*)$"
+          }
+        },
+        "max_future_skew_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 300
+        }
+      }
+    }
+  }
+}

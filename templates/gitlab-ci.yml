@@ -1,0 +1,98 @@
+# AIIR — AI Integrity Receipts for GitLab CI
+# https://github.com/invariant-systems-ai/aiir  |  https://pypi.org/project/aiir/
+#
+# Generates tamper-evident cryptographic receipts for commits with declared
+# AI involvement. Supports compliance evidence for EU AI Act. Zero dependencies. Apache 2.0.
+#
+# ──────────────────────────────────────────────────────────────────────
+# QUICK START — add ONE line to your .gitlab-ci.yml:
+#
+#   include:
+#     - remote: 'https://raw.githubusercontent.com/invariant-systems-ai/aiir/v1.5.1/templates/gitlab-ci.yml'
+#
+# That's it. Every push and MR now generates receipts.
+#
+# ──────────────────────────────────────────────────────────────────────
+# SELF-HOSTED GITLAB — if you mirror AIIR to your own GitLab instance:
+#
+#   include:
+#     - project: 'your-group/aiir'
+#       ref: 'v1.5.1'
+#       file: '/templates/gitlab-ci.yml'
+#
+# ──────────────────────────────────────────────────────────────────────
+# CUSTOM CONFIGURATION — override variables in your pipeline:
+#
+#   variables:
+#     AIIR_VERSION: "1.5.1"        # Pin version (recommended)
+#     AIIR_AI_ONLY: ""            # Set to "--ai-only" to skip non-AI commits
+#     AIIR_EXTRA_ARGS: ""         # Any additional aiir CLI flags
+#     AIIR_ARTIFACT_EXPIRY: "90 days"  # How long to keep receipt artifacts
+#
+# Requirements: Python 3.9+ (available in python:3.11-slim image)
+# Dependencies: Zero (aiir has no runtime dependencies)
+# ──────────────────────────────────────────────────────────────────────
+
+# --- Base template (hidden job) ---
+.aiir-receipt:
+  image: python:3.11-slim
+  variables:
+    AIIR_VERSION: "1.5.1"
+    AIIR_AI_ONLY: ""
+    AIIR_EXTRA_ARGS: ""
+    AIIR_ARTIFACT_EXPIRY: "90 days"
+  before_script:
+    - pip install --quiet "aiir==${AIIR_VERSION}"
+  artifacts:
+    paths:
+      - .aiir-receipts/
+    expire_in: $AIIR_ARTIFACT_EXPIRY
+    when: always
+
+# --- Receipt every push to any branch ---
+aiir-receipt-push:
+  extends: .aiir-receipt
+  stage: test
+  script:
+    - |
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        aiir --range "${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}" \
+          --output .aiir-receipts/ --pretty --gitlab-ci ${AIIR_AI_ONLY:+"$AIIR_AI_ONLY"} ${AIIR_EXTRA_ARGS:+"$AIIR_EXTRA_ARGS"}
+      else
+        aiir --output .aiir-receipts/ --pretty --gitlab-ci ${AIIR_AI_ONLY:+"$AIIR_AI_ONLY"} ${AIIR_EXTRA_ARGS:+"$AIIR_EXTRA_ARGS"}
+      fi
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+# --- Receipt every merge request diff ---
+aiir-receipt-mr:
+  extends: .aiir-receipt
+  stage: test
+  script:
+    - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --depth=100
+    - |
+      aiir --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}" \
+        --output .aiir-receipts/ --pretty --gitlab-ci ${AIIR_AI_ONLY:+"$AIIR_AI_ONLY"} ${AIIR_EXTRA_ARGS:+"$AIIR_EXTRA_ARGS"}
+    # Summary for MR notes (auto-posted by --gitlab-ci when CI_MERGE_REQUEST_IID is set)
+    - |
+      . aiir.env 2>/dev/null || true
+      RECEIPT_COUNT=${AIIR_RECEIPT_COUNT:-$(ls -1 .aiir-receipts/*.json 2>/dev/null | wc -l)}
+      AI_COUNT=${AIIR_AI_COMMIT_COUNT:-$(grep -l '"is_ai_authored": true' .aiir-receipts/*.json 2>/dev/null | wc -l)}
+      SIGNED_COUNT=${AIIR_SIGNED_RECEIPT_COUNT:-0}
+      UNSIGNED_COUNT=${AIIR_UNSIGNED_RECEIPT_COUNT:-$((RECEIPT_COUNT - SIGNED_COUNT))}
+      echo "AIIR: ${RECEIPT_COUNT} commits receipted, ${AI_COUNT} AI-authored, ${SIGNED_COUNT} signed, ${UNSIGNED_COUNT} unsigned"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# --- (Optional) Scheduled full-repo audit ---
+# Uncomment to receipt your entire repo history on a schedule.
+# Useful for bootstrapping AIIR on an existing project.
+#
+# aiir-receipt-audit:
+#   extends: .aiir-receipt
+#   stage: test
+#   script:
+#     - aiir --range "$(git rev-list --max-parents=0 HEAD)..HEAD" \
+#         --output .aiir-receipts/ --pretty $AIIR_AI_ONLY $AIIR_EXTRA_ARGS
+#   rules:
+#     - if: '$CI_PIPELINE_SOURCE == "schedule"'
