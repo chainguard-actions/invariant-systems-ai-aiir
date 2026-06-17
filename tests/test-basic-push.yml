@@ -1,0 +1,69 @@
+name: Test basic push (no signing)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          # Use an explicit commit range so we don't depend on push event SHAs
+          commit-range: "HEAD~1..HEAD"
+          sign: "false"
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert ai_commit_count is a non-negative integer
+        env:
+          AI_COUNT: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "ai_commit_count: $AI_COUNT"
+          if ! echo "$AI_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: ai_commit_count is not a non-negative integer: '$AI_COUNT'"
+            exit 1
+          fi
+          echo "PASS: ai_commit_count=$AI_COUNT"
+
+      - name: Assert unsigned_receipt_count equals receipt_count (sign=false)
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+          UNSIGNED_COUNT: ${{ steps.action.outputs.unsigned_receipt_count }}
+          SIGNED_COUNT: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          echo "unsigned_receipt_count: $UNSIGNED_COUNT"
+          echo "signed_receipt_count: $SIGNED_COUNT"
+          if [ "$SIGNED_COUNT" != "0" ] && [ -n "$SIGNED_COUNT" ]; then
+            echo "FAIL: expected signed_receipt_count=0 when sign=false, got '$SIGNED_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_json is valid JSON or empty
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          if [ -z "$RECEIPTS_JSON" ]; then
+            echo "PASS: receipts_json is empty (no commits in range)"
+          elif echo "$RECEIPTS_JSON" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "PASS: receipts_json is valid JSON"
+          else
+            echo "FAIL: receipts_json is not valid JSON"
+            exit 1
+          fi

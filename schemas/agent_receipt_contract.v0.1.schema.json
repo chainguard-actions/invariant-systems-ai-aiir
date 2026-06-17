@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/agent_receipt_contract.v0.1.schema.json",
+  "title": "AIIR Agent-Receipt Profile v0.1",
+  "description": "Draft JSON Schema for the AIIR agent-receipt profile (aiir/agent_receipt.v0.1), a portable receipt record for agent-assisted software actions. Companion to the existing AIIR commit-receipt profile (aiir/commit_receipt.v2).",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "record_id",
+    "timestamp",
+    "actor",
+    "action",
+    "artifacts",
+    "policy",
+    "proof"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "aiir/agent_receipt.v0.1",
+      "description": "Versioned profile identifier."
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^a1-[0-9a-f]{32}$",
+      "description": "Content-addressed record identifier derived from the canonical record core. 128-bit truncation; the full hash is retained in proof.content_hash. Parallel to the commit-receipt 'g1-' prefix."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 UTC timestamp for the emitted record."
+    },
+    "actor": {
+      "type": "object",
+      "required": ["kind", "tool"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["human", "agent", "bot", "mixed"]
+        },
+        "tool": {
+          "type": "object",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+              "description": "Lowercase ASCII tool label such as copilot, claude-code, cursor, windsurf, warp, devin, github-actions, or unknown. Implementations MUST normalize to lowercase before emission. The label is informational only and is not authenticated unless the record is signed."
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+              "description": "Optional surface label such as vscode-agent, cli, github-app, gitlab-job, or mcp. Lowercase ASCII."
+            }
+          }
+        },
+        "session_ref": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional tool-local session or conversation reference. MUST NOT contain identifiers that map to a natural person; SHOULD be opaque or hashed if any identifying input is included."
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["read", "edit", "run", "test", "build", "review", "browse", "apply", "open_pr", "deploy"]
+        },
+        "intent": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Optional tool-native action name such as apply_patch, pytest, or fetch_webpage."
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional human-readable summary of the action."
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["inputs", "outputs"],
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact" }
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact" }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["decision"],
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["allowed", "warned", "blocked", "needs_review", "not_evaluated"]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": "Stable reason codes or short text strings."
+        },
+        "contract_ref": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional link or identifier for the policy contract that produced this decision."
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "required": ["canonicalization", "content_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "canonicalization": {
+          "type": "string",
+          "description": "Canonicalization profile identifier used to derive the content hash. v0.1 implementations SHOULD use 'aiir-canon-0' (the same profile as the AIIR commit-receipt profile)."
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Full SHA-256 hash of the canonical record core. record_id is a 128-bit truncation of this hash."
+        },
+        "signature": {
+          "type": ["object", "null"],
+          "description": "Optional signature metadata. Signature envelope semantics are intentionally draft-stage and vendor-neutral. When absent, the actor.tool.name field is informational only and is NOT authenticated.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Optional namespaced extension fields. Keys SHOULD use reverse-DNS or 'x-vendor-' prefixes (e.g., 'io.invariantsystems.aiir', 'x-cursor-context'). Extensions are excluded from record_core in v0.1 and therefore do not affect content_hash or record_id; treat extensions as informational metadata only.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["type", "ref"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["file", "commit", "test", "bundle", "url", "issue", "pr", "directory", "other"]
+        },
+        "ref": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Portable reference such as a path, URL, commit SHA, or test name."
+        },
+        "digest": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Optional content hash when available."
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Optional subtype such as source, result, evidence, or external."
+        }
+      }
+    }
+  }
+}

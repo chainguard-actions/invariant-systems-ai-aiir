@@ -1,0 +1,207 @@
+# AIIR Receipt — GitLab CI/CD Catalog Component
+# https://gitlab.com/invariant-systems/aiir
+#
+# Generates tamper-evident cryptographic receipts for commits with declared AI involvement.
+# Supports compliance evidence for EU AI Act. Zero dependencies. Apache 2.0.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/invariant-systems/aiir/receipt@1
+#       inputs:
+#         stage: test
+#
+# Self-hosted GitLab (mirror):
+#   include:
+#     - component: $CI_SERVER_FQDN/your-group/aiir/receipt@1
+#       inputs:
+#         stage: test
+
+spec:
+  description: >
+    Generate tamper-evident cryptographic receipts for every commit with declared AI involvement.
+    Detects Copilot, ChatGPT, Claude, Cursor, Amazon Q, Devin, Gemini, and 20+ other AI tools.
+    Compliance evidence for EU AI Act. Zero dependencies.
+  inputs:
+    stage:
+      description: "Pipeline stage for the receipt job"
+      default: test
+    version:
+      description: "AIIR version to install (pin for reproducibility, or 'source' to install from local checkout)"
+      default: "1.4.0"
+    ai-only:
+      description: "Only receipt AI-authored commits (skip human-only commits)"
+      type: boolean
+      default: false
+    artifact-expiry:
+      description: "How long to keep receipt artifacts"
+      default: "90 days"
+    output-dir:
+      description: "Directory to write receipt JSON files"
+      default: ".aiir-receipts"
+    extra-args:
+      description: "Additional aiir CLI flags (e.g. '--redact-files')"
+      default: ""
+    python-image:
+      description: "Docker image with Python 3.9+ (override for air-gapped registries)"
+      default: "python:3.11-slim"
+    job-prefix:
+      description: "Prefix for job names (use to include the component multiple times)"
+      default: "aiir"
+    sign:
+      description: "Enable Sigstore keyless signing (uses GitLab OIDC id_tokens)"
+      type: boolean
+      default: true
+    gl-sast-report:
+      description: "Generate gl-sast-report.json for Security Dashboard (AI findings as informational)"
+      type: boolean
+      default: false
+    approval-threshold:
+      description: "AI% threshold to add extra MR approval rules (0 = disabled)"
+      type: number
+      default: 0
+---
+
+# --- Receipt on push ---
+"$[[ inputs.job-prefix ]]-receipt-push":
+  image: $[[ inputs.python-image ]]
+  stage: $[[ inputs.stage ]]
+  id_tokens:
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1
+    - |
+      if [ "$[[ inputs.version ]]" = "source" ]; then
+        pip install --quiet -e .
+      else
+        pip install --quiet "aiir==$[[ inputs.version ]]"
+      fi
+    - |
+      if [ "$[[ inputs.sign ]]" = "true" ]; then
+        pip install --quiet sigstore
+      fi
+  script:
+    - |
+      AI_FLAG=""
+      if [ "$[[ inputs.ai-only ]]" = "true" ]; then
+        AI_FLAG="--ai-only"
+      fi
+      SIGN_FLAG=""
+      if [ "$[[ inputs.sign ]]" = "true" ]; then
+        SIGN_FLAG="--sign"
+      fi
+      SAST_FLAG=""
+      if [ "$[[ inputs.gl-sast-report ]]" = "true" ]; then
+        SAST_FLAG="--gl-sast-report gl-sast-report.json"
+      fi
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$CI_COMMIT_BEFORE_SHA" 2>/dev/null; then
+        aiir --range "${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}" \
+          --output "$[[ inputs.output-dir ]]/" --pretty --gitlab-ci \
+          $AI_FLAG $SIGN_FLAG $SAST_FLAG $[[ inputs.extra-args ]]
+      else
+        # Null SHA, missing SHA (force-push/rebase), or empty before —
+        # fall back to receipting just the tip commit.
+        if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+          echo "⚠️  Before SHA ${CI_COMMIT_BEFORE_SHA:0:12} not reachable (force-push?). Falling back to HEAD."
+        fi
+        aiir --output "$[[ inputs.output-dir ]]/" --pretty --gitlab-ci \
+          $AI_FLAG $SIGN_FLAG $SAST_FLAG $[[ inputs.extra-args ]]
+      fi
+    # Print summary
+    - |
+      . aiir.env 2>/dev/null || true
+      RECEIPT_COUNT=${AIIR_RECEIPT_COUNT:-$(ls -1 "$[[ inputs.output-dir ]]"/*.json 2>/dev/null | wc -l)}
+      AI_COUNT=${AIIR_AI_COMMIT_COUNT:-$(grep -l '"is_ai_authored": true' "$[[ inputs.output-dir ]]"/*.json 2>/dev/null | wc -l)}
+      SIGNED_COUNT=${AIIR_SIGNED_RECEIPT_COUNT:-0}
+      UNSIGNED_COUNT=${AIIR_UNSIGNED_RECEIPT_COUNT:-$((RECEIPT_COUNT - SIGNED_COUNT))}
+      echo "────────────────────────────────────────"
+      echo "AIIR: ${RECEIPT_COUNT} commits receipted, ${AI_COUNT} AI-authored, ${SIGNED_COUNT} signed, ${UNSIGNED_COUNT} unsigned"
+      echo "────────────────────────────────────────"
+  artifacts:
+    paths:
+      - $[[ inputs.output-dir ]]/
+    reports:
+      dotenv: aiir.env
+      sast: gl-sast-report.json
+    expire_in: $[[ inputs.artifact-expiry ]]
+    when: always
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+# --- Receipt on merge request ---
+"$[[ inputs.job-prefix ]]-receipt-mr":
+  image: $[[ inputs.python-image ]]
+  stage: $[[ inputs.stage ]]
+  id_tokens:
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1
+    - |
+      if [ "$[[ inputs.version ]]" = "source" ]; then
+        pip install --quiet -e .
+      else
+        pip install --quiet "aiir==$[[ inputs.version ]]"
+      fi
+    - |
+      if [ "$[[ inputs.sign ]]" = "true" ]; then
+        pip install --quiet sigstore
+      fi
+  script:
+    - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --depth=100
+    - |
+      AI_FLAG=""
+      if [ "$[[ inputs.ai-only ]]" = "true" ]; then
+        AI_FLAG="--ai-only"
+      fi
+      SIGN_FLAG=""
+      if [ "$[[ inputs.sign ]]" = "true" ]; then
+        SIGN_FLAG="--sign"
+      fi
+      SAST_FLAG=""
+      if [ "$[[ inputs.gl-sast-report ]]" = "true" ]; then
+        SAST_FLAG="--gl-sast-report gl-sast-report.json"
+      fi
+      aiir --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}" \
+        --output "$[[ inputs.output-dir ]]/" --pretty --gitlab-ci \
+        $AI_FLAG $SIGN_FLAG $SAST_FLAG $[[ inputs.extra-args ]]
+    # Print summary
+    - |
+      . aiir.env 2>/dev/null || true
+      RECEIPT_COUNT=${AIIR_RECEIPT_COUNT:-$(ls -1 "$[[ inputs.output-dir ]]"/*.json 2>/dev/null | wc -l)}
+      AI_COUNT=${AIIR_AI_COMMIT_COUNT:-$(grep -l '"is_ai_authored": true' "$[[ inputs.output-dir ]]"/*.json 2>/dev/null | wc -l)}
+      SIGNED_COUNT=${AIIR_SIGNED_RECEIPT_COUNT:-0}
+      UNSIGNED_COUNT=${AIIR_UNSIGNED_RECEIPT_COUNT:-$((RECEIPT_COUNT - SIGNED_COUNT))}
+      echo "────────────────────────────────────────"
+      echo "AIIR: ${RECEIPT_COUNT} commits receipted, ${AI_COUNT} AI-authored, ${SIGNED_COUNT} signed, ${UNSIGNED_COUNT} unsigned"
+      echo "────────────────────────────────────────"
+    # Enforce extra MR approvals when AI% exceeds threshold
+    - |
+      if [ "$[[ inputs.approval-threshold ]]" -gt 0 ] 2>/dev/null; then
+        . aiir.env 2>/dev/null || true
+        if [ -n "${AIIR_AI_PERCENT:-}" ]; then
+          python3 -c "
+      from aiir import enforce_approval_rules
+      import json, sys
+      result = enforce_approval_rules(
+          ai_percent=float('${AIIR_AI_PERCENT}'),
+          threshold=float('$[[ inputs.approval-threshold ]]'),
+      )
+      print(json.dumps(result, indent=2))
+      if result.get('action') == 'failed':
+          sys.exit(1)
+      "
+        fi
+      fi
+  artifacts:
+    paths:
+      - $[[ inputs.output-dir ]]/
+    reports:
+      dotenv: aiir.env
+      sast: gl-sast-report.json
+    expire_in: $[[ inputs.artifact-expiry ]]
+    when: always
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

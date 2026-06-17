@@ -1,0 +1,17 @@
+Hi HN — I'm Noah. I built AIIR because I couldn't answer a simple question about my own repo: which commits involved AI tools, and what could I actually prove from the record?
+
+AIIR scans git history for declared AI signals — Co-authored-by trailers, bot authors, commit-message markers for 48+ tools — and generates a content-addressed SHA-256 receipt per commit. Change one byte, the hash breaks.
+
+    pip install aiir && cd any-repo && aiir --pretty
+
+No account, no cloud, zero dependencies. Python 3.9+, Apache 2.0.
+
+What it doesn't do: detect silent copy-paste or Copilot completions that leave no marker. Detection is heuristic, not magic. The threat model spells out the limits: https://github.com/invariant-systems-ai/aiir/blob/main/THREAT_MODEL.md
+
+The awkward part: I used AI tools heavily building this. Of ~250 receipts in this repo's public ledger, most land in the "human" bucket — because Copilot Chat doesn't add trailers. That label really means "no durable AI marker found," not "proven human-only." AIIR makes disclosure verifiable instead of relying on screenshots or policy PDFs.
+
+Also ships as a GitHub Action, GitLab CI component, VS Code extension, and MCP server. Optional Sigstore signing for stronger release evidence.
+
+Browser verifier (client-side, no upload): https://invariantsystems.io/verify
+
+Happy to answer questions about the design or where I think this breaks down.

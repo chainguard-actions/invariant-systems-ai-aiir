@@ -1,0 +1,15 @@
+{
+    "$schema": "https://invariantsystems.io/schemas/aiir/policy.v1.schema.json",
+    "$comment": "AIIR policy preset: strict — maximum assurance for regulated and enterprise environments",
+    "description": "Release gate / regulated / SOC 2 / EU AI Act — maximum assurance",
+    "require_signing": true,
+    "max_ai_percent": 50.0,
+    "require_provenance_repo": true,
+    "max_unsigned_receipts": 0,
+    "require_schema_valid": true,
+    "enforcement": "hard-fail",
+    "allowed_authorship_classes": [
+        "human",
+        "ai_assisted"
+    ]
+}
