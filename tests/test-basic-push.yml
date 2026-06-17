@@ -1,0 +1,99 @@
+name: Test basic push event (no signing)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Ensure Python 3.11 is available
+        run: |
+          # Install Python 3.11 if not already present
+          if ! python3.11 --version 2>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y python3.11 python3.11-venv
+          fi
+          # Ensure 'python' command exists and points to 3.11+
+          if ! python --version 2>/dev/null | grep -qE 'Python 3\.(1[1-9]|[2-9][0-9])'; then
+            sudo ln -sf /usr/bin/python3.11 /usr/local/bin/python
+          fi
+          python --version
+
+      - name: Ensure git history has at least 2 commits
+        run: |
+          COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+          echo "Commit count: $COUNT"
+          if [ "$COUNT" -lt 2 ]; then
+            git config user.email "test@test.com"
+            git config user.name "Test"
+            touch dummy-commit-file.txt
+            git add dummy-commit-file.txt
+            git commit -m "test: dummy commit for range testing"
+          fi
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: "HEAD~1..HEAD"
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert ai_commit_count is a non-negative integer
+        env:
+          AI_COUNT: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "ai_commit_count: $AI_COUNT"
+          if ! echo "$AI_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: ai_commit_count is not a non-negative integer: '$AI_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert no signed receipts when sign is false
+        env:
+          SIGNED_COUNT: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $SIGNED_COUNT"
+          if [ "$SIGNED_COUNT" != "0" ] && [ -n "$SIGNED_COUNT" ]; then
+            echo "FAIL: expected signed_receipt_count to be 0 when sign=false, got: '$SIGNED_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_json is set
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          if [ -z "$RECEIPTS_JSON" ]; then
+            echo "FAIL: receipts_json is empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_overflow is not true
+        env:
+          OVERFLOW: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipts_overflow: $OVERFLOW"
+          if [ "$OVERFLOW" = "true" ]; then
+            echo "FAIL: receipts_overflow should not be true for a small commit range"
+            exit 1
+          fi
+          echo "PASS"

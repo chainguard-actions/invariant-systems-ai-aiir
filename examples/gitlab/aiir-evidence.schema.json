@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/gitlab_ai_provenance_evidence.v0.schema.json",
+  "title": "GitLab AI Provenance Evidence v0",
+  "description": "Producer-side GitLab CI artifact recording declared AI involvement for a merge-request pipeline run. Schema: gitlab_ai_provenance_evidence.v0. AIIR is one possible producer; any conforming tool may emit this artifact.",
+  "type": "object",
+  "required": [
+    "schema",
+    "subject",
+    "change",
+    "provenance",
+    "receipt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "gitlab_ai_provenance_evidence.v0",
+      "description": "Schema identifier. MUST be the literal string 'gitlab_ai_provenance_evidence.v0'."
+    },
+    "subject": {
+      "$ref": "#/$defs/Subject",
+      "description": "GitLab pipeline context that produced this artifact."
+    },
+    "change": {
+      "$ref": "#/$defs/Change",
+      "description": "Commit and diff covered by this artifact."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "AI involvement declaration and detected signals."
+    },
+    "receipt": {
+      "$ref": "#/$defs/Receipt",
+      "description": "AIIR receipt reference and verification status."
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Optional forward-compatibility fields. Not part of the v0 core. Producers and consumers MUST ignore unknown extension keys.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "Subject": {
+      "type": "object",
+      "description": "Identifies the GitLab merge-request pipeline that produced this artifact.",
+      "required": [
+        "kind",
+        "project_full_path",
+        "merge_request_iid",
+        "pipeline_id",
+        "pipeline_sha",
+        "job_id",
+        "job_name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "gitlab.merge_request_pipeline",
+          "description": "Subject kind. Fixed to 'gitlab.merge_request_pipeline' in v0."
+        },
+        "project_full_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "GitLab project path (namespace/name), e.g. 'group/project'. Corresponds to CI_PROJECT_PATH."
+        },
+        "merge_request_iid": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Merge request internal ID within the project. Corresponds to CI_MERGE_REQUEST_IID."
+        },
+        "pipeline_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "GitLab pipeline ID. Corresponds to CI_PIPELINE_ID."
+        },
+        "pipeline_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full 40-character hex SHA of the commit the pipeline ran on. Corresponds to CI_COMMIT_SHA."
+        },
+        "job_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "GitLab job ID. Corresponds to CI_JOB_ID."
+        },
+        "job_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "GitLab job name. Corresponds to CI_JOB_NAME."
+        }
+      }
+    },
+    "Change": {
+      "type": "object",
+      "description": "Identifies the commit and diff covered by this artifact.",
+      "required": [
+        "commit_sha",
+        "diff_hash",
+        "files_changed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full 40-character hex SHA of the git commit."
+        },
+        "diff_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of the full git diff: 'sha256:' + 64 hex chars. Matches the diff_hash field in the underlying AIIR commit receipt."
+        },
+        "files_changed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "description": "List of changed file paths in the commit."
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "description": "AI involvement declaration and detected signals.",
+      "required": [
+        "declared_ai_involvement",
+        "detection_boundary",
+        "signals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "declared_ai_involvement": {
+          "type": "boolean",
+          "description": "True if AIIR detected any AI signal in declared commit metadata (trailers, author fields, commit message body)."
+        },
+        "detection_boundary": {
+          "const": "declared-metadata-only",
+          "description": "Detection scope. Fixed to 'declared-metadata-only' in v0. AIIR does not detect hidden, undeclared, or copy-pasted AI usage."
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "description": "Raw signal strings found in declared commit metadata (e.g. 'Co-authored-by: Claude', 'AI-assisted'). Empty array when declared_ai_involvement is false."
+        }
+      }
+    },
+    "Receipt": {
+      "type": "object",
+      "description": "Reference to the underlying AIIR commit receipt and its verification status.",
+      "required": [
+        "producer",
+        "producer_version",
+        "mode",
+        "receipt_id",
+        "content_hash",
+        "verification_status",
+        "signed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "producer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Name of the tool that generated the underlying receipt. 'AIIR' for receipts generated by the AIIR CLI."
+        },
+        "producer_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Version of the producer tool (e.g. '1.5.1'). Use 'example' or a TODO marker when the version is not known at schema-authoring time."
+        },
+        "mode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Receipt generation mode. 'declared-ai-receipt' for standard AIIR commit receipts."
+        },
+        "receipt_id": {
+          "type": "string",
+          "pattern": "^g1-[0-9a-f]{32}$",
+          "description": "AIIR receipt identifier. Format: 'g1-' followed by exactly 32 lowercase hex characters (content-addressed). Matches the receipt_id field in the underlying AIIR commit receipt."
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of the AIIR receipt core: 'sha256:' + 64 hex chars. Matches the content_hash field in the underlying AIIR commit receipt."
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "invalid",
+            "unverified"
+          ],
+          "description": "Verification result for the underlying AIIR receipt. 'valid': content hash (and signature if present) verified. 'invalid': verification failed. 'unverified': no verification was performed in this pipeline run."
+        },
+        "verified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "RFC 3339 UTC timestamp of when verification was performed. MUST be omitted or null when verification_status is 'unverified'."
+        },
+        "signed": {
+          "type": "boolean",
+          "description": "True if the underlying AIIR receipt carries a Sigstore signature bundle."
+        }
+      }
+    }
+  }
+}

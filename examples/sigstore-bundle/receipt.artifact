@@ -1,0 +1,59 @@
+{
+  "type": "aiir.commit_receipt",
+  "schema": "aiir/commit_receipt.v2",
+  "version": "1.3.0",
+  "commit": {
+    "sha": "df0abcca94b42f04aa0593e6bf088397e4b441dd",
+    "tree_sha": "76c913fab67a9db9ef446b08cbd53c666aa435c6",
+    "parent_shas": [
+      "0383c23bfdab331884e2dc01de759962f01ded81"
+    ],
+    "author": {
+      "name": "InvariantSystems",
+      "email": "noah@invariantsystems.io",
+      "date": "2026-04-01T05:03:04-04:00"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-04-01T05:03:04-04:00"
+    },
+    "subject": "docs: add ecosystem adapters and align in-toto predicate URIs (#94)",
+    "message_hash": "sha256:2567120088e24935222257462168cfb5d5e481f1ceeb8cecb81d4d356ac00ff9",
+    "diff_hash": "sha256:814ec90eb846a7ba40d8c7605dabc62bb17b4b543e5a126fc05c43d5601583cb",
+    "files_changed": 12,
+    "files": [
+      "ARCHITECTURE.md",
+      "CHANGELOG.md",
+      "README.md",
+      "SPEC.md",
+      "aiir/_receipt.py",
+      "contrib/guac/README.md",
+      "contrib/guac/aiir_to_guac.py",
+      "contrib/guac/example_queries.graphql",
+      "contrib/witness/README.md",
+      "contrib/witness/attestor.py",
+      "docs/ecosystem.md",
+      "tests/test_intoto.py"
+    ]
+  },
+  "ai_attestation": {
+    "is_ai_authored": false,
+    "signals_detected": [],
+    "signal_count": 0,
+    "is_bot_authored": false,
+    "bot_signals_detected": [],
+    "bot_signal_count": 0,
+    "authorship_class": "human",
+    "detection_method": "heuristic_v2"
+  },
+  "provenance": {
+    "repository": "https://github.com/invariant-systems-ai/aiir",
+    "tool": "https://github.com/invariant-systems-ai/aiir@1.3.0",
+    "generator": "aiir.github"
+  },
+  "receipt_id": "g1-92edbfc760df552f6941c2444ad6733b",
+  "content_hash": "sha256:92edbfc760df552f6941c2444ad6733b1a66e50986c61412afd8b130dec307c2",
+  "timestamp": "2026-04-01T09:03:19Z",
+  "extensions": {}
+}

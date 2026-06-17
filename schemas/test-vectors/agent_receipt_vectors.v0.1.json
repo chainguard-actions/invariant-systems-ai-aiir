@@ -1,0 +1,193 @@
+{
+  "$schema": "https://invariantsystems.io/schemas/aiir/agent_receipt_vectors.v0.1.schema.json",
+  "description": "Conformance vectors for the AIIR agent-receipt profile (aiir/agent_receipt.v0.1). Conforming implementations must produce byte-identical canonical JSON, content_hash, and record_id values for each input_core.",
+  "contract_version": "aiir/agent_receipt.v0.1",
+  "canonical_json_rules": {
+    "sort_keys": true,
+    "separators": [
+      ",",
+      ":"
+    ],
+    "ensure_ascii": true,
+    "allow_nan": false,
+    "depth_limit": 64
+  },
+  "hash_algorithm": "SHA-256",
+  "record_id_format": "a1-{first_32_hex_of_content_hash}",
+  "generated_by": "manual-draft",
+  "generated_at": "2026-04-26T19:15:00Z",
+  "vectors": [
+    {
+      "id": "a-01-agent-edit-allowed",
+      "description": "IDE agent edits one source file and one test, allowed by local policy.",
+      "input_core": {
+        "contract_version": "aiir/agent_receipt.v0.1",
+        "timestamp": "2026-04-26T18:20:00Z",
+        "actor": {
+          "kind": "agent",
+          "tool": {
+            "name": "copilot",
+            "surface": "vscode-agent"
+          },
+          "session_ref": "sess_01"
+        },
+        "action": {
+          "kind": "edit",
+          "intent": "apply_patch",
+          "summary": "Add receipt verification guard"
+        },
+        "artifacts": {
+          "inputs": [
+            {
+              "type": "file",
+              "ref": "aiir/cli.py",
+              "role": "source"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "file",
+              "ref": "aiir/cli.py",
+              "role": "source"
+            },
+            {
+              "type": "test",
+              "ref": "tests/test_cli.py::test_export_guard",
+              "role": "evidence"
+            }
+          ]
+        },
+        "policy": {
+          "decision": "allowed",
+          "reasons": [
+            "workspace_context_loaded",
+            "local_verification_required"
+          ],
+          "contract_ref": "aiir://policy/local-default"
+        },
+        "proof": {
+          "canonicalization": "aiir-canon-0"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"action\":{\"intent\":\"apply_patch\",\"kind\":\"edit\",\"summary\":\"Add receipt verification guard\"},\"actor\":{\"kind\":\"agent\",\"session_ref\":\"sess_01\",\"tool\":{\"name\":\"copilot\",\"surface\":\"vscode-agent\"}},\"artifacts\":{\"inputs\":[{\"ref\":\"aiir/cli.py\",\"role\":\"source\",\"type\":\"file\"}],\"outputs\":[{\"ref\":\"aiir/cli.py\",\"role\":\"source\",\"type\":\"file\"},{\"ref\":\"tests/test_cli.py::test_export_guard\",\"role\":\"evidence\",\"type\":\"test\"}]},\"contract_version\":\"aiir/agent_receipt.v0.1\",\"policy\":{\"contract_ref\":\"aiir://policy/local-default\",\"decision\":\"allowed\",\"reasons\":[\"workspace_context_loaded\",\"local_verification_required\"]},\"proof\":{\"canonicalization\":\"aiir-canon-0\"},\"timestamp\":\"2026-04-26T18:20:00Z\"}",
+        "canonical_json_sha256": "ba371a1f33cae92426f311113bb802e0d7ca8f5928b3ccd916196e62cd306014",
+        "content_hash": "sha256:ba371a1f33cae92426f311113bb802e0d7ca8f5928b3ccd916196e62cd306014",
+        "record_id": "a1-ba371a1f33cae92426f311113bb802e0"
+      }
+    },
+    {
+      "id": "a-02-bot-test-allowed",
+      "description": "CI bot runs verification after a receipt bundle build.",
+      "input_core": {
+        "contract_version": "aiir/agent_receipt.v0.1",
+        "timestamp": "2026-04-26T18:45:00Z",
+        "actor": {
+          "kind": "bot",
+          "tool": {
+            "name": "github-actions",
+            "surface": "github-app"
+          },
+          "session_ref": "run_5812"
+        },
+        "action": {
+          "kind": "test",
+          "intent": "verify-release",
+          "summary": "Verify emitted receipts and bundle metadata"
+        },
+        "artifacts": {
+          "inputs": [
+            {
+              "type": "bundle",
+              "ref": ".receipts/release-1.3.0/",
+              "role": "evidence"
+            },
+            {
+              "type": "commit",
+              "ref": "9f3e52f1c6f77f9ab0b6a4de8b2549fce9cd0a11",
+              "role": "source"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "test",
+              "ref": "scripts/verify-release-evidence.py 1.3.0",
+              "role": "result"
+            }
+          ]
+        },
+        "policy": {
+          "decision": "allowed",
+          "reasons": [
+            "ci_release_verification",
+            "signed_bundle_present"
+          ],
+          "contract_ref": "aiir://policy/release-verification"
+        },
+        "proof": {
+          "canonicalization": "aiir-canon-0"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"action\":{\"intent\":\"verify-release\",\"kind\":\"test\",\"summary\":\"Verify emitted receipts and bundle metadata\"},\"actor\":{\"kind\":\"bot\",\"session_ref\":\"run_5812\",\"tool\":{\"name\":\"github-actions\",\"surface\":\"github-app\"}},\"artifacts\":{\"inputs\":[{\"ref\":\".receipts/release-1.3.0/\",\"role\":\"evidence\",\"type\":\"bundle\"},{\"ref\":\"9f3e52f1c6f77f9ab0b6a4de8b2549fce9cd0a11\",\"role\":\"source\",\"type\":\"commit\"}],\"outputs\":[{\"ref\":\"scripts/verify-release-evidence.py 1.3.0\",\"role\":\"result\",\"type\":\"test\"}]},\"contract_version\":\"aiir/agent_receipt.v0.1\",\"policy\":{\"contract_ref\":\"aiir://policy/release-verification\",\"decision\":\"allowed\",\"reasons\":[\"ci_release_verification\",\"signed_bundle_present\"]},\"proof\":{\"canonicalization\":\"aiir-canon-0\"},\"timestamp\":\"2026-04-26T18:45:00Z\"}",
+        "canonical_json_sha256": "72c5bb025ddf6fd147e2aadc3533c4969d165c51832fb342ab5febcb9189eb1f",
+        "content_hash": "sha256:72c5bb025ddf6fd147e2aadc3533c4969d165c51832fb342ab5febcb9189eb1f",
+        "record_id": "a1-72c5bb025ddf6fd147e2aadc3533c496"
+      }
+    },
+    {
+      "id": "a-03-agent-browse-needs-review",
+      "description": "Agent requests an external browse action and policy marks it for review.",
+      "input_core": {
+        "contract_version": "aiir/agent_receipt.v0.1",
+        "timestamp": "2026-04-26T19:05:00Z",
+        "actor": {
+          "kind": "agent",
+          "tool": {
+            "name": "windsurf",
+            "surface": "mcp"
+          },
+          "session_ref": "wave_77"
+        },
+        "action": {
+          "kind": "browse",
+          "intent": "fetch_webpage",
+          "summary": "Read external repository landing page for tool comparison"
+        },
+        "artifacts": {
+          "inputs": [
+            {
+              "type": "url",
+              "ref": "https://github.com/example/agent-archive",
+              "role": "external"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "other",
+              "ref": "summary:repo-framing",
+              "role": "result"
+            }
+          ]
+        },
+        "policy": {
+          "decision": "needs_review",
+          "reasons": [
+            "external_content_untrusted",
+            "human_ack_required"
+          ],
+          "contract_ref": "aiir://policy/browser-gate"
+        },
+        "proof": {
+          "canonicalization": "aiir-canon-0"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"action\":{\"intent\":\"fetch_webpage\",\"kind\":\"browse\",\"summary\":\"Read external repository landing page for tool comparison\"},\"actor\":{\"kind\":\"agent\",\"session_ref\":\"wave_77\",\"tool\":{\"name\":\"windsurf\",\"surface\":\"mcp\"}},\"artifacts\":{\"inputs\":[{\"ref\":\"https://github.com/example/agent-archive\",\"role\":\"external\",\"type\":\"url\"}],\"outputs\":[{\"ref\":\"summary:repo-framing\",\"role\":\"result\",\"type\":\"other\"}]},\"contract_version\":\"aiir/agent_receipt.v0.1\",\"policy\":{\"contract_ref\":\"aiir://policy/browser-gate\",\"decision\":\"needs_review\",\"reasons\":[\"external_content_untrusted\",\"human_ack_required\"]},\"proof\":{\"canonicalization\":\"aiir-canon-0\"},\"timestamp\":\"2026-04-26T19:05:00Z\"}",
+        "canonical_json_sha256": "6262e030d26fd327c1569dd247ab4e490f1412b489c7fe75d4ea3f3f4958fc6a",
+        "content_hash": "sha256:6262e030d26fd327c1569dd247ab4e490f1412b489c7fe75d4ea3f3f4958fc6a",
+        "record_id": "a1-6262e030d26fd327c1569dd247ab4e49"
+      }
+    }
+  ]
+}

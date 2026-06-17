@@ -1,0 +1,659 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 Invariant Systems, Inc.
+"""
+AIIR internal — GitHub Actions integration helpers.
+
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import uuid
+from typing import Any, Dict, List, Optional
+from urllib.request import Request, urlopen
+
+from aiir._core import (
+    CLI_VERSION,
+    MAX_SUMMARY_SIZE,
+    _sanitize_md,
+    _strip_terminal_escapes,
+)
+from aiir._ledger import _receipt_is_signed
+
+logger = logging.getLogger("aiir")
+
+# ---------------------------------------------------------------------------
+# GitHub Actions outputs + step summary
+# ---------------------------------------------------------------------------
+
+
+def set_github_output(key: str, value: str) -> None:
+    """Set a GitHub Actions output variable."""
+    # Reject newlines, '=', control chars, and '<<' in keys
+    if (
+        not key
+        or any(c in key for c in "\n\r=")
+        or any(ord(c) < 0x20 for c in key)
+        or "<<" in key
+    ):
+        raise ValueError(
+            f"Invalid GitHub output key (contains forbidden characters): {key!r}"
+        )
+    # Cap value length — GitHub Actions limits GITHUB_OUTPUT to 8 MB total.
+    _MAX_OUTPUT_VALUE_SIZE = 4 * 1024 * 1024  # 4 MB
+    if len(value.encode("utf-8", errors="replace")) > _MAX_OUTPUT_VALUE_SIZE:
+        raise ValueError(
+            f"GitHub output value too large ({len(value)} chars, max {_MAX_OUTPUT_VALUE_SIZE})"
+        )
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as f:
+            # Use heredoc for values with control chars or '<<'
+            needs_heredoc = (
+                "\n" in value
+                or "\r" in value
+                or any(ord(c) < 0x20 for c in value)
+                or "<<" in value
+            )
+            if needs_heredoc:
+                delimiter = f"ghadelimiter_{uuid.uuid4()}"
+                f.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
+            else:
+                f.write(f"{key}={value}\n")
+
+
+def set_github_summary(markdown: str) -> None:
+    """Append to the GitHub Actions step summary."""
+    # Byte-aware truncation for multi-byte safety.
+    md_bytes = markdown.encode("utf-8", errors="replace")
+    if len(md_bytes) > MAX_SUMMARY_SIZE:
+        _SUFFIX = b"\n\n*(truncated \xe2\x80\x94 exceeded 1 MB limit)*"
+        budget = MAX_SUMMARY_SIZE - len(_SUFFIX)
+        markdown = md_bytes[:budget].decode("utf-8", errors="ignore") + _SUFFIX.decode(
+            "utf-8"
+        )
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_file:
+        with open(summary_file, "a", encoding="utf-8", newline="") as f:
+            f.write(markdown + "\n")
+
+
+def format_github_summary(receipts: List[Dict[str, Any]]) -> str:
+    """Format receipts as a GitHub Actions step summary (Markdown table)."""
+    # Guard ai_attestation type in header count (same as loop body).
+    ai_count = sum(
+        1
+        for r in receipts
+        if isinstance(r.get("ai_attestation"), dict)
+        and r["ai_attestation"].get("is_ai_authored")
+    )
+    total = len(receipts)
+    signed_count = sum(
+        1 for r in receipts if isinstance(r, dict) and _receipt_is_signed(r)
+    )
+    unsigned_count = total - signed_count
+
+    lines = [
+        "## 🔐 AIIR Receipt Summary",
+        "",
+        (
+            f"**{total}** commit{'s' if total != 1 else ''} receipted"
+            + (f" · **{ai_count}** AI-authored" if ai_count else "")
+            + f" · **{signed_count}** signed · **{unsigned_count}** unsigned"
+        ),
+        "",
+        "| Commit | Subject | AI | Receipt ID |",
+        "|--------|---------|-----|-----------|",
+    ]
+
+    for r in receipts:
+        commit = r.get("commit", {})
+        ai = r.get("ai_attestation", {})
+        # Guard nested field types (same pattern as format_receipt_pretty).
+        if not isinstance(commit, dict):
+            commit = {}
+        if not isinstance(ai, dict):
+            ai = {}
+        # Sanitize ALL user-controlled fields in the markdown table,
+        # not just subject. A tampered receipt could have backticks/pipes in
+        # sha or receipt_id, breaking the table or injecting content.
+        sha_short = _sanitize_md(commit.get("sha", "")[:8])
+        # Sanitize subject to prevent markdown/HTML injection
+        subject = _sanitize_md(commit.get("subject", "")[:50])
+        ai_flag = "🤖" if ai.get("is_ai_authored") else ""
+        rid = _sanitize_md(r.get("receipt_id", "")[:16]) + "…"
+        # Use double-backtick delimiters for code spans. In GFM,
+        # backslash-escaped backticks inside single-backtick spans are literal
+        # (not escapes), so a backtick in sha_short would break the code span.
+        # Double-backtick delimiters with spaces handle embedded backticks safely.
+        lines.append(f"| `` {sha_short} `` | {subject} | {ai_flag} | `` {rid} `` |")
+
+    lines.extend(
+        [
+            "",
+            f"*Generated by aiir v{CLI_VERSION}*",
+        ]
+    )
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# GitHub Checks API — P0: create a visible check run on every PR
+# ---------------------------------------------------------------------------
+
+_API_TIMEOUT = 15  # seconds
+
+
+def _github_api_request(
+    endpoint: str,
+    payload: Dict[str, Any],
+    token: Optional[str] = None,
+    method: str = "POST",
+) -> Dict[str, Any]:
+    """Make an authenticated request to the GitHub REST API.
+
+    Args:
+        endpoint: Full URL (e.g. ``https://api.github.com/repos/owner/repo/...``).
+        payload: JSON body.
+        token: GitHub token.  Falls back to ``GITHUB_TOKEN`` env var.
+        method: HTTP method (default POST).
+
+    Returns:
+        Parsed JSON response dict.
+
+    Raises:
+        RuntimeError: On missing token or HTTP error.
+    """
+    auth_token = token or os.environ.get("GITHUB_TOKEN", "")
+    if not auth_token:
+        raise RuntimeError("No GitHub token available for API request")
+
+    # Validate URL scheme to prevent SSRF (e.g. file://, gopher://).
+    from urllib.parse import urlparse as _urlparse
+
+    _parsed = _urlparse(endpoint)
+    if _parsed.scheme not in ("https", "http"):
+        raise RuntimeError(
+            f"Refusing API request to non-HTTP(S) URL scheme: {_parsed.scheme!r}"
+        )
+
+    data = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    req = Request(endpoint, data=data, headers=headers, method=method)
+
+    try:
+        with urlopen(req, timeout=_API_TIMEOUT) as resp:  # nosec B310 nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+            result: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+            return result
+    except Exception as exc:
+        raise RuntimeError(f"GitHub API request failed: {exc}") from exc
+
+
+def create_check_run(
+    receipts: List[Dict[str, Any]],
+    repo: Optional[str] = None,
+    sha: Optional[str] = None,
+    token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create an ``aiir/verify`` check run on the current commit.
+
+    This makes AIIR verification visible as a pass/fail status check
+    on every PR, which can be enforced via branch protection rules.
+
+    Args:
+        receipts: List of AIIR receipt dicts.
+        repo: ``owner/repo`` (defaults to ``GITHUB_REPOSITORY`` env var).
+        sha: Commit SHA (defaults to ``GITHUB_SHA`` env var).
+        token: GitHub token (defaults to ``GITHUB_TOKEN`` env var).
+
+    Returns:
+        The GitHub API response dict.
+    """
+    repo = repo or os.environ.get("GITHUB_REPOSITORY", "")
+    sha = sha or os.environ.get("GITHUB_SHA", "")
+    if not repo or not sha:
+        raise RuntimeError(
+            "Cannot create check run: GITHUB_REPOSITORY and GITHUB_SHA required"
+        )
+
+    total = len(receipts)
+    ai_count = sum(
+        1
+        for r in receipts
+        if isinstance(r.get("ai_attestation"), dict)
+        and r["ai_attestation"].get("is_ai_authored")
+    )
+    signed_count = sum(
+        1 for r in receipts if r.get("extensions", {}).get("sigstore_bundle")
+    )
+
+    # Build summary text for the check run
+    summary_lines = [
+        "## AIIR Verification Summary",
+        "",
+        f"**{total}** commit{'s' if total != 1 else ''} receipted",
+    ]
+    if ai_count:
+        summary_lines.append(f"- **{ai_count}** AI-authored")
+    summary_lines.append(f"- **{total - ai_count}** human-authored")
+    if signed_count:
+        summary_lines.append(f"- **{signed_count}** signed with Sigstore")
+
+    summary_lines.extend(["", "| Commit | Subject | AI | Receipt ID |"])
+    summary_lines.append("|--------|---------|-----|-----------|")
+
+    for r in receipts[:50]:  # Cap at 50 rows for Check Run display
+        commit = r.get("commit", {})
+        if not isinstance(commit, dict):
+            commit = {}
+        ai = r.get("ai_attestation", {})
+        if not isinstance(ai, dict):
+            ai = {}
+        sha_short = _sanitize_md(commit.get("sha", "")[:8])
+        subject = _sanitize_md(commit.get("subject", "")[:50])
+        ai_flag = "🤖" if ai.get("is_ai_authored") else "✅"
+        rid = _sanitize_md(r.get("receipt_id", "")[:16]) + "…"
+        # Use double-backtick delimiters (same as format_github_summary)
+        # so that any embedded backtick in sha_short/rid does not break
+        # the code span.
+        summary_lines.append(
+            f"| `` {sha_short} `` | {subject} | {ai_flag} | `` {rid} `` |"
+        )
+
+    summary_lines.extend(
+        [
+            "",
+            f"*Generated by [aiir](https://github.com/invariant-systems-ai/aiir) v{CLI_VERSION}*",
+        ]
+    )
+    summary_text = "\n".join(summary_lines)
+
+    title = f"{total} receipt{'s' if total != 1 else ''}"
+    if ai_count:
+        title += f" · {ai_count} AI-authored"
+
+    payload = {
+        "name": "aiir/verify",
+        "head_sha": sha,
+        "status": "completed",
+        "conclusion": "success",
+        "output": {
+            "title": title,
+            "summary": summary_text,
+        },
+    }
+
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    endpoint = f"{api_url}/repos/{repo}/check-runs"
+
+    return _github_api_request(endpoint, payload, token=token)
+
+
+# ---------------------------------------------------------------------------
+# GitHub PR comment — P3: human-readable summary on every PR
+# ---------------------------------------------------------------------------
+
+_PR_COMMENT_MARKER = "<!-- aiir-receipt-summary -->"
+
+
+def post_pr_comment(
+    receipts: List[Dict[str, Any]],
+    repo: Optional[str] = None,
+    pr_number: Optional[str] = None,
+    token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Post (or update) an AIIR verification summary comment on a PR.
+
+    If a previous AIIR comment exists (identified by a hidden HTML marker),
+    it will be updated in place to avoid comment spam.
+
+    Args:
+        receipts: List of AIIR receipt dicts.
+        repo: ``owner/repo`` (defaults to ``GITHUB_REPOSITORY`` env var).
+        pr_number: PR number (defaults to event payload detection).
+        token: GitHub token (defaults to ``GITHUB_TOKEN`` env var).
+
+    Returns:
+        The GitHub API response dict.
+    """
+    repo = repo or os.environ.get("GITHUB_REPOSITORY", "")
+    if not pr_number:
+        # Try to extract from GITHUB_EVENT_PATH
+        pr_number = _detect_pr_number()
+    if not repo or not pr_number:
+        raise RuntimeError(
+            "Cannot post PR comment: need GITHUB_REPOSITORY and a PR number"
+        )
+    # Validate pr_number is numeric to prevent URL path injection.
+    # A non-numeric value could alter the API request path.
+    if not str(pr_number).isdigit():
+        raise RuntimeError(
+            f"Invalid PR number (must be numeric): {str(pr_number)[:20]!r}"
+        )
+
+    body = _format_pr_comment(receipts)
+
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+
+    # Try to find and update existing comment
+    existing_id = _find_existing_comment(repo, pr_number, token=token)
+    if existing_id:
+        endpoint = f"{api_url}/repos/{repo}/issues/comments/{existing_id}"
+        return _github_api_request(
+            endpoint, {"body": body}, token=token, method="PATCH"
+        )
+    else:
+        endpoint = f"{api_url}/repos/{repo}/issues/{pr_number}/comments"
+        return _github_api_request(endpoint, {"body": body}, token=token)
+
+
+def _detect_pr_number() -> Optional[str]:
+    """Extract PR number from the GitHub Actions event payload."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "")
+    if not event_path:
+        return None
+    try:
+        with open(event_path, encoding="utf-8") as f:
+            event = json.load(f)
+        pr = event.get("pull_request") or event.get("issue") or {}
+        number = pr.get("number")
+        return str(number) if number else None
+    except (OSError, json.JSONDecodeError, TypeError):
+        return None
+
+
+def _find_existing_comment(
+    repo: str,
+    pr_number: str,
+    token: Optional[str] = None,
+) -> Optional[int]:
+    """Find an existing AIIR comment on a PR by marker."""
+    auth_token = token or os.environ.get("GITHUB_TOKEN", "")
+    if not auth_token:
+        return None
+
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    endpoint = f"{api_url}/repos/{repo}/issues/{pr_number}/comments?per_page=100"
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {auth_token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    req = Request(endpoint, headers=headers, method="GET")
+
+    try:
+        with urlopen(req, timeout=_API_TIMEOUT) as resp:  # nosec B310 nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+            comments = json.loads(resp.read().decode("utf-8"))
+        for c in comments:
+            if isinstance(c, dict) and _PR_COMMENT_MARKER in c.get("body", ""):
+                return c.get("id")
+    except Exception:
+        pass  # Non-fatal — will create a new comment instead
+    return None
+
+
+def _format_pr_comment(receipts: List[Dict[str, Any]]) -> str:
+    """Format the PR comment body with the AIIR verification summary."""
+    total = len(receipts)
+    ai_count = sum(
+        1
+        for r in receipts
+        if isinstance(r.get("ai_attestation"), dict)
+        and r["ai_attestation"].get("is_ai_authored")
+    )
+
+    lines = [
+        _PR_COMMENT_MARKER,
+        "## 🔐 AIIR Verification Summary",
+        "",
+        "| | |",
+        "|---|---|",
+        "| **Status** | ✅ Verified |",
+        f"| **Receipts** | {total} commit{'s' if total != 1 else ''} |",
+        f"| **AI-authored** | {ai_count} |",
+        f"| **Human-authored** | {total - ai_count} |",
+    ]
+
+    # Per-commit table
+    if receipts:
+        lines.extend(
+            [
+                "",
+                "<details>",
+                "<summary>Receipt details</summary>",
+                "",
+                "| Commit | Subject | Authorship | Receipt ID |",
+                "|--------|---------|------------|-----------|",
+            ]
+        )
+
+        for r in receipts[:50]:
+            commit = r.get("commit", {})
+            if not isinstance(commit, dict):
+                commit = {}
+            ai = r.get("ai_attestation", {})
+            if not isinstance(ai, dict):
+                ai = {}
+            # Use _sanitize_md (not _strip_terminal_escapes) because these
+            # values are rendered in a GitHub PR comment markdown table.
+            # _strip_terminal_escapes only removes ANSI escapes; _sanitize_md
+            # also neutralises markdown metacharacters (|, `, <, etc.) that
+            # could break the table layout or inject HTML.
+            sha_short = _sanitize_md(commit.get("sha", "")[:8])
+            subject = _sanitize_md(commit.get("subject", "")[:50])
+            authorship = _sanitize_md(str(ai.get("authorship_class", "unknown")))
+            rid = _sanitize_md(r.get("receipt_id", "")[:20])
+            lines.append(
+                f"| `` {sha_short} `` | {subject} | {authorship} | `` {rid}… `` |"
+            )
+
+        lines.extend(
+            [
+                "",
+                "</details>",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            f"*Generated by [aiir](https://github.com/invariant-systems-ai/aiir) v{CLI_VERSION}*",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Commit trailer helper — P4: AIIR-Receipt trailer for git commit messages
+# ---------------------------------------------------------------------------
+
+
+def _receipt_extensions(receipt: Dict[str, Any]) -> Dict[str, Any]:
+    extensions = receipt.get("extensions")
+    return extensions if isinstance(extensions, dict) else {}
+
+
+_GITLENS_EXTENSION_ID = "eamodio.gitlens"
+_GITLENS_COMMIT_COMPOSER_FEATURES = frozenset(
+    {"commit_composer", "gitlens_commit_composer", "ai_commit_composer"}
+)
+_GITLENS_COMMIT_COMPOSER_EVIDENCE = "gitlens_commit_composer"
+
+
+def _tool_context_entries(receipt: Dict[str, Any]) -> List[Dict[str, Any]]:
+    tool_context = _receipt_extensions(receipt).get("tool_context")
+    if not isinstance(tool_context, list):
+        return []
+    return [entry for entry in tool_context if isinstance(entry, dict)]
+
+
+def _is_gitlens_commit_composer_context(entry: Dict[str, Any]) -> bool:
+    tool = _strip_terminal_escapes(str(entry.get("tool") or "")).casefold()
+    extension_id = _strip_terminal_escapes(
+        str(entry.get("extension_id") or "")
+    ).casefold()
+    feature = _strip_terminal_escapes(str(entry.get("feature") or "")).casefold()
+    evidence = entry.get("evidence")
+    evidence_values = (
+        {_strip_terminal_escapes(str(item)).casefold() for item in evidence}
+        if isinstance(evidence, list)
+        else set()
+    )
+
+    is_gitlens = tool == "gitlens" or extension_id == _GITLENS_EXTENSION_ID
+    is_commit_composer = (
+        feature in _GITLENS_COMMIT_COMPOSER_FEATURES
+        or _GITLENS_COMMIT_COMPOSER_EVIDENCE in evidence_values
+    )
+    return is_gitlens and is_commit_composer
+
+
+def _receipt_companion_assisted_by(receipt: Dict[str, Any]) -> List[str]:
+    labels: List[str] = []
+    for entry in _tool_context_entries(receipt):
+        if _is_gitlens_commit_composer_context(entry):
+            labels.append("GitLens Commit Composer")
+    return labels
+
+
+def _append_evidence_level(levels: List[str], level: str) -> None:
+    for part in re.split(r"[+,]", level):
+        clean = _strip_terminal_escapes(part.strip())[:80]
+        if clean and clean not in levels:
+            levels.append(clean)
+
+
+def _receipt_has_attested_ai(receipt: Dict[str, Any]) -> bool:
+    ai_attestation = receipt.get("ai_attestation")
+    if isinstance(ai_attestation, dict) and ai_attestation.get("is_ai_authored"):
+        return True
+
+    extensions = _receipt_extensions(receipt)
+    agent = extensions.get("agent_attestation")
+    if isinstance(agent, dict) and agent.get("tool_id"):
+        return True
+
+    editor = extensions.get("editor_provenance")
+    if isinstance(editor, dict) and isinstance(editor.get("records"), list):
+        return len(editor.get("records") or []) > 0
+
+    if _receipt_companion_assisted_by(receipt):
+        return True
+
+    return False
+
+
+def _receipt_assisted_by(receipt: Dict[str, Any]) -> Optional[str]:
+    extensions = _receipt_extensions(receipt)
+    agent = extensions.get("agent_attestation")
+    if not isinstance(agent, dict):
+        return None
+    tool_id = _strip_terminal_escapes(str(agent.get("tool_id") or ""))[:120]
+    return tool_id or None
+
+
+def _receipt_evidence_levels(receipt: Dict[str, Any]) -> List[str]:
+    levels: List[str] = []
+    ai_attestation = receipt.get("ai_attestation")
+    signals = []
+    if isinstance(ai_attestation, dict) and isinstance(
+        ai_attestation.get("signals_detected"), list
+    ):
+        signals = [str(item) for item in ai_attestation.get("signals_detected") or []]
+
+    extensions = _receipt_extensions(receipt)
+    agent = extensions.get("agent_attestation")
+    editor = extensions.get("editor_provenance")
+    tool_context_entries = _tool_context_entries(receipt)
+
+    if (
+        isinstance(agent, dict)
+        and agent.get("tool_id")
+        or any(signal.startswith("trailer:") for signal in signals)
+    ):
+        levels.append("declared")
+
+    for entry in tool_context_entries:
+        if _is_gitlens_commit_composer_context(entry):
+            _append_evidence_level(levels, "declared")
+        level = _strip_terminal_escapes(str(entry.get("evidence_level") or ""))[:80]
+        _append_evidence_level(levels, level)
+
+    if isinstance(agent, dict) and (
+        str(agent.get("run_context") or "") == "mcp"
+        or str(agent.get("confidence") or "") == "transport"
+    ):
+        if "mcp-observed" not in levels:
+            levels.append("mcp-observed")
+
+    if isinstance(editor, dict) and isinstance(editor.get("records"), list):
+        if editor.get("records") and "deterministic-provenance" not in levels:
+            levels.append("deterministic-provenance")
+
+    return levels
+
+
+def format_commit_trailer(
+    receipts: List[Dict[str, Any]],
+    ledger_dir: str = ".aiir",
+) -> str:
+    """Format git commit trailer lines for AIIR receipts.
+
+    Returns a string suitable for appending to a commit message body::
+
+        AIIR-Receipt: .aiir/receipts.jsonl#g1-4f8d...
+        AIIR-Type: aiir.commit_receipt
+        AIIR-AI: true
+
+    Args:
+        receipts: List of receipt dicts.
+        ledger_dir: Ledger directory path (default ``.aiir``).
+
+    Returns:
+        Trailer lines as a single string (with trailing newline).
+    """
+    if not receipts:
+        return ""
+
+    lines = []
+    has_ai = any(_receipt_has_attested_ai(r) for r in receipts)
+    assisted_by: List[str] = []
+    evidence_levels: List[str] = []
+
+    for r in receipts[:10]:  # Cap at 10 trailers for sanity
+        rid = _strip_terminal_escapes(str(r.get("receipt_id", ""))[:40])
+        if rid:
+            lines.append(f"AIIR-Receipt: {ledger_dir}/receipts.jsonl#{rid}")
+        tool_id = _receipt_assisted_by(r)
+        if tool_id and tool_id not in assisted_by:
+            assisted_by.append(tool_id)
+        for label in _receipt_companion_assisted_by(r):
+            if label not in assisted_by:
+                assisted_by.append(label)
+        for level in _receipt_evidence_levels(r):
+            if level not in evidence_levels:
+                evidence_levels.append(level)
+
+    if receipts:  # pragma: no branch — early return above guarantees non-empty
+        rtype = _strip_terminal_escapes(
+            str(receipts[0].get("type", "aiir.commit_receipt"))
+        )
+        lines.append(f"AIIR-Type: {rtype}")
+    lines.append(f"AIIR-AI: {'true' if has_ai else 'false'}")
+    if assisted_by:
+        lines.append(f"AI-Assisted-By: {', '.join(assisted_by)}")
+    if has_ai and evidence_levels:
+        lines.append(f"AIIR-Evidence-Level: {'+'.join(evidence_levels)}")
+    lines.append("AIIR-Verified: true")
+
+    return "\n".join(lines) + "\n"

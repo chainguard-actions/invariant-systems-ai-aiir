@@ -1,0 +1,38 @@
+{
+  "schema": "gitlab_ai_provenance_evidence.v0",
+  "subject": {
+    "kind": "gitlab.merge_request_pipeline",
+    "project_full_path": "group/project",
+    "merge_request_iid": 123,
+    "pipeline_id": 456789,
+    "pipeline_sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+    "job_id": 987654,
+    "job_name": "aiir_evidence"
+  },
+  "change": {
+    "commit_sha": "deadbeefcafe1234567890abcdef1234567890ab",
+    "diff_hash": "sha256:4b227777d4dd1fc61c6f884f48641d02b4d121d3fa221a9a2e3b5c6d7e8f9a0b",
+    "files_changed": [
+      "src/auth/session.rs",
+      "tests/auth/session_test.rs"
+    ]
+  },
+  "provenance": {
+    "declared_ai_involvement": true,
+    "detection_boundary": "declared-metadata-only",
+    "signals": [
+      "Co-authored-by: Claude",
+      "AI-assisted"
+    ]
+  },
+  "receipt": {
+    "producer": "AIIR",
+    "producer_version": "1.5.1",
+    "mode": "declared-ai-receipt",
+    "receipt_id": "g1-0123456789abcdef0123456789abcdef",
+    "content_hash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "verification_status": "unverified",
+    "signed": false
+  },
+  "extensions": {}
+}

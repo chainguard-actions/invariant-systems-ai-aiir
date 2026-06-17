@@ -1,0 +1,16 @@
+src/**
+test/**
+docs/**
+node_modules/**
+tsconfig.json
+package-lock.json
+**/*.ts
+**/*.js.map
+.gitignore
+.vscodeignore
+SMOKE_TEST.md
+ADMIN_DEPLOYMENT.md
+THREAT_MODEL.md
+scripts/**
+.vscode-test/**
+*.vsix

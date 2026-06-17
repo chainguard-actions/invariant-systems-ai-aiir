@@ -1,0 +1,64 @@
+# typos configuration — https://github.com/crate-ci/typos
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[default]
+extend-ignore-re = [
+    # SHA hashes (40 or 64 hex chars)
+    "[0-9a-fA-F]{40,64}",
+    # Base64 encoded content
+    "[A-Za-z0-9+/]{40,}={0,2}",
+    # SPDX identifiers
+    "SPDX-License-Identifier.*",
+]
+
+[default.extend-words]
+# Domain-specific words that are not typos
+aiir = "aiir"
+intoto = "intoto"
+oidc = "oidc"
+nist = "nist"
+slsa = "slsa"
+ghcr = "ghcr"
+sbom = "sbom"
+vsa = "vsa"
+# Unicode character names (GREEK CAPITAL LETTER YOT, etc.)
+YOT = "YOT"
+Yot = "Yot"
+SEH = "SEH"
+Seh = "Seh"
+# Lisu Letter BA, Bamum Letter UE, Cherokee Letter Ot, Georgian Mtavruli Vas
+BA = "BA"
+Ba = "Ba"
+UE = "UE"
+Ue = "Ue"
+Ot = "Ot"
+Vas = "Vas"
+# Intentional misspelling in test_cli_integration.py (tests --verfy → --verify suggestion)
+verfy = "verfy"
+# Intentional misspelling in test_cli_integration.py (tests --prettty → --pretty suggestion)
+prettty = "prettty"
+# XSS payload fragment in test_hardening.py
+Cript = "Cript"
+# AWS product name
+braket = "braket"
+Braket = "Braket"
+BRAKET = "BRAKET"
+# Ancillary directory token in signed public example fixtures
+anc = "anc"
+
+[files]
+extend-exclude = [
+    "*.pyc",
+    "*.json",
+    "*.jsonl",
+    "*.svg",
+    "*.lock",
+    ".git/",
+    "__pycache__/",
+    "mutants/",
+    "dist/",
+    "*.bundle",
+    "examples/*/receipt.artifact",
+    "examples/*/receipt.artifact.sigstore",
+]

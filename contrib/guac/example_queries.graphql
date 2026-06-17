@@ -1,0 +1,139 @@
+# AIIR + GUAC: Example GraphQL Queries
+#
+# These queries demonstrate how to find and reason about
+# AI authorship metadata in a GUAC graph after ingesting
+# AIIR receipts as in-toto attestations.
+#
+# Prerequisites:
+#   1. GUAC instance running (https://docs.guac.sh/setup/)
+#   2. AIIR receipts ingested:
+#      python contrib/guac/aiir_to_guac.py .aiir/receipts.jsonl --output-dir /tmp/attestations
+#      guacone collect files /tmp/attestations/
+
+# ─────────────────────────────────────────────────────
+# Query 1: Find all sources with AIIR attestations
+# ─────────────────────────────────────────────────────
+query FindAIIRAttestations {
+  HasMetadata(hasMetadataSpec: {
+    key: "predicateType"
+    value: "https://invariantsystems.io/predicates/aiir/commit_receipt/v2"
+  }) {
+    subject {
+      ... on Source {
+        type
+        namespaces {
+          namespace
+          names {
+            name
+            commit
+          }
+        }
+      }
+    }
+    key
+    value
+    timestamp
+    origin
+    collector
+  }
+}
+
+# ─────────────────────────────────────────────────────
+# Query 2: List commits classified as AI-assisted
+# ─────────────────────────────────────────────────────
+query FindAIAssistedCommits {
+  HasMetadata(hasMetadataSpec: {
+    key: "aiir:classification"
+    value: "ai_assisted"
+  }) {
+    subject {
+      ... on Source {
+        namespaces {
+          names {
+            name
+            commit
+          }
+        }
+      }
+    }
+    timestamp
+  }
+}
+
+# ─────────────────────────────────────────────────────
+# Query 3: Cross-reference AI-authored code with known vulnerabilities
+#
+# Use case: "Do any of my vulnerable packages have
+# AI-authored commits in their source?"
+# ─────────────────────────────────────────────────────
+query AIAuthoredVulnerablePackages {
+  # Step 1: Get packages with known vulnerabilities
+  CertifyVuln(certifyVulnSpec: {}) {
+    package {
+      type
+      namespaces {
+        namespace
+        names {
+          name
+          versions {
+            version
+          }
+        }
+      }
+    }
+    vulnerability {
+      vulnerabilityIDs {
+        vulnerabilityID
+      }
+    }
+  }
+  # Step 2: Separately query AIIR attestations and join by source
+  # (GUAC's path queries can traverse source → package edges)
+}
+
+# ─────────────────────────────────────────────────────
+# Query 4: Policy check — unsigned AI-authored commits
+#
+# Finds commits where AI was involved but no Sigstore
+# signature was attached to the receipt.
+# ─────────────────────────────────────────────────────
+query UnsignedAICommits {
+  HasMetadata(hasMetadataSpec: {
+    key: "aiir:classification"
+    value: "ai_assisted"
+  }) {
+    subject {
+      ... on Source {
+        namespaces {
+          names {
+            name
+            commit
+          }
+        }
+      }
+    }
+    # Check for absence of CertifyGood with sigstore justification
+    timestamp
+    origin
+  }
+}
+
+# ─────────────────────────────────────────────────────
+# Query 5: Audit trail — all AIIR receipts for a repository
+# ─────────────────────────────────────────────────────
+query AuditTrailForRepo {
+  sources(sourceSpec: {
+    type: "git"
+    namespace: "github.com/invariant-systems-ai"
+    name: "aiir"
+  }) {
+    type
+    namespaces {
+      namespace
+      names {
+        name
+        commit
+      }
+    }
+  }
+}

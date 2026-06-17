@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/conformance-manifest.v1.json",
+  "description": "Machine-readable registry of AIIR spec versions, conformance levels, test vectors, implementations, and extensions. Updated on each spec release.",
+  "last_updated": "2026-03-11",
+  "spec": {
+    "name": "AIIR Commit Receipt Specification",
+    "version": "2.0.0",
+    "schema_id": "aiir/commit_receipt.v2",
+    "status": "Stable",
+    "url": "https://github.com/invariant-systems-ai/aiir/blob/main/SPEC.md",
+    "governance_url": "https://github.com/invariant-systems-ai/aiir/blob/main/SPEC_GOVERNANCE.md",
+    "license": "Apache-2.0",
+    "updated": "2026-03-10"
+  },
+  "conformance_levels": [
+    {
+      "level": 1,
+      "name": "Verify",
+      "description": "Can verify an existing receipt's content_hash and receipt_id against the canonical JSON encoding algorithm.",
+      "required_artifacts": [
+        "schemas/test_vectors.json"
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Generate",
+      "description": "Level 1 + can produce valid receipts with correct canonical JSON encoding. Must pass JSON Schema validation.",
+      "required_artifacts": [
+        "schemas/test_vectors.json",
+        "schemas/commit_receipt.v2.schema.json"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Full",
+      "description": "Level 2 + CBOR round-trip: JSON → CBOR → JSON produces identical content_hash and receipt_id values.",
+      "required_artifacts": [
+        "schemas/test_vectors.json",
+        "schemas/cbor_test_vectors.json",
+        "schemas/commit_receipt.v2.schema.json"
+      ]    },
+    {
+      "level": 4,
+      "name": "Hardened",
+      "description": "Level 3 + adversarial inputs, Unicode evasion, canonicalization traps, cross-format determinism, and negative encoding vectors. Proves the implementation handles hostile and edge-case receipts correctly.",
+      "required_artifacts": [
+        "schemas/test_vectors.json",
+        "schemas/cbor_test_vectors.json",
+        "schemas/commit_receipt.v2.schema.json",
+        "schemas/adversarial_conformance_vectors.json",
+        "schemas/unicode_evasion_vectors.json",
+        "schemas/canonicalization_trap_vectors.json",
+        "schemas/cross_format_vectors.json",
+        "schemas/negative_encoding_vectors.json"
+      ]    }
+  ],
+  "test_vectors": [
+    {
+      "file": "schemas/test_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/test_vectors.json",
+      "format": "JSON",
+      "count": 25,
+      "spec_version": "1.0.0",
+      "generated_by": "aiir 1.0.15",
+      "generated_at": "2026-03-09T00:00:00Z",
+      "purpose": "Canonical JSON encoding and hash determinism. Conforming implementations must compute identical content_hash and receipt_id for all 25 inputs."
+    },
+    {
+      "file": "schemas/cbor_test_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/cbor_test_vectors.json",
+      "format": "CBOR",
+      "count": 24,
+      "spec_version": "1.0.0",
+      "generated_by": "aiir 1.0.15",
+      "generated_at": "2026-03-09T00:00:00Z",
+      "purpose": "CBOR encoding round-trip determinism. JSON → CBOR → JSON must preserve identical hashes."
+    },
+    {
+      "file": "schemas/test-vectors/encoder_interop_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/test-vectors/encoder_interop_vectors.json",
+      "format": "JSON",
+      "count": 8,
+      "spec_version": "1.0.0",
+      "generated_by": "schemas/test-vectors/generate_encoder_vectors.py",
+      "generated_at": "2026-03-11T00:00:00Z",
+      "purpose": "Cross-language encoder interop. JS and Rust implementations must produce identical content_hash values for all 8 inputs."
+    },
+    {
+      "file": "schemas/adversarial_conformance_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/adversarial_conformance_vectors.json",
+      "format": "JSON",
+      "count": 15,
+      "spec_version": "2.0.0",
+      "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+      "generated_at": "2026-03-25T00:00:00Z",
+      "purpose": "Adversarial conformance. Hostile receipts (injection, tampering, bypass, evasion) that third-party verifiers MUST handle correctly."
+    },
+    {
+      "file": "schemas/unicode_evasion_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/unicode_evasion_vectors.json",
+      "format": "JSON",
+      "count": 8,
+      "spec_version": "2.0.0",
+      "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+      "generated_at": "2026-03-25T00:00:00Z",
+      "purpose": "Unicode evasion. Homoglyphs, invisible characters, combining marks, and variation selectors that test ensure_ascii canonical encoding."
+    },
+    {
+      "file": "schemas/canonicalization_trap_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/canonicalization_trap_vectors.json",
+      "format": "JSON",
+      "count": 8,
+      "spec_version": "2.0.0",
+      "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+      "generated_at": "2026-03-25T00:00:00Z",
+      "purpose": "Canonicalization traps. Edge cases that commonly differ across JSON encoders: key sorting, 0 vs false, null vs absent, control char escaping."
+    },
+    {
+      "file": "schemas/cross_format_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/cross_format_vectors.json",
+      "format": "JSON+CBOR",
+      "count": 5,
+      "spec_version": "2.0.0",
+      "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+      "generated_at": "2026-03-25T00:00:00Z",
+      "purpose": "Cross-format determinism. Same receipt in JSON and CBOR must yield the same content_hash."
+    },
+    {
+      "file": "schemas/negative_encoding_vectors.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/negative_encoding_vectors.json",
+      "format": "JSON",
+      "count": 4,
+      "spec_version": "2.0.0",
+      "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+      "generated_at": "2026-03-25T00:00:00Z",
+      "purpose": "Negative encoding. Shows WRONG canonical JSON alongside CORRECT canonical JSON for known encoder pitfalls."
+    }
+  ],
+  "schemas": [
+    {
+      "file": "schemas/commit_receipt.v1.schema.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/commit_receipt.v1.schema.json",
+      "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+      "description": "JSON Schema for the AIIR commit receipt v1 format",
+      "spec_version": "1.0.x"
+    },
+    {
+      "file": "schemas/commit_receipt.v2.schema.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/commit_receipt.v2.schema.json",
+      "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+      "description": "JSON Schema for the AIIR commit receipt v2 format (with envelope)",
+      "spec_version": "2.0.x"
+    },
+    {
+      "file": "schemas/review_receipt.v1.schema.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/review_receipt.v1.schema.json",
+      "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+      "description": "JSON Schema for the AIIR review receipt v1 format",
+      "spec_version": "2.0.x"
+    },
+    {
+      "file": "schemas/verification_summary.v1.schema.json",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/verification_summary.v1.schema.json",
+      "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+      "description": "JSON Schema for the AIIR Verification Summary Attestation (VSA) v1 format",
+      "spec_version": "2.0.x"
+    },
+    {
+      "file": "schemas/receipt.cddl",
+      "url": "https://github.com/invariant-systems-ai/aiir/blob/main/schemas/receipt.cddl",
+      "schema_dialect": "RFC 8610 (CDDL)",
+      "description": "CDDL grammar for the AIIR commit receipt v1 format (JSON + CBOR wire formats)",
+      "spec_version": "2.0.x"
+    }
+  ],
+  "implementations": [
+    {
+      "id": "aiir-python",
+      "name": "aiir (Python — reference implementation)",
+      "language": "Python",
+      "language_version_min": "3.9",
+      "url": "https://github.com/invariant-systems-ai/aiir",
+      "package_url": "https://pypi.org/project/aiir/",
+      "docker_url": "ghcr.io/invariant-systems-ai/aiir",
+      "conformance_level": 3,
+      "status": "reference",
+      "verified_against": "schemas/test_vectors.json",
+      "verified_at": "2026-03-11",
+      "maintainer": "Invariant Systems, Inc.",
+      "maintainer_url": "https://invariantsystems.io",
+      "notes": "Reference implementation. All other implementations must produce identical content_hash and receipt_id values for the same inputs."
+    }
+  ],
+  "extension_registry": {
+    "process_url": "https://github.com/invariant-systems-ai/aiir/blob/main/SPEC_GOVERNANCE.md#5-extension-mechanism",
+    "extensions": []
+  }
+}

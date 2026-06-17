@@ -1,0 +1,258 @@
+# AIIR — GitLab AI Provenance Evidence Template
+# https://github.com/invariant-systems-ai/aiir  |  https://pypi.org/project/aiir/
+#
+# Produces aiir-evidence.json as a GitLab CI job artifact.
+# Schema: gitlab_ai_provenance_evidence.v0
+#
+# This template generates a structurally valid evidence envelope for every
+# merge-request pipeline. AIIR is used to generate the underlying commit
+# receipt; the envelope is assembled from the receipt output and GitLab CI
+# environment variables.
+#
+# Verification status is set to "unverified" because no documented AIIR CLI
+# command currently verifies the gitlab_ai_provenance_evidence.v0 envelope
+# as a whole.
+#
+# TODO: When a documented AIIR command exists to verify the envelope and
+# upgrade verification_status to "valid" or "invalid", update the script
+# section below. Until then, the underlying AIIR receipt (in .aiir-receipts/)
+# can be verified independently with:
+#   aiir --verify .aiir-receipts/<receipt>.json
+# or by looping over all receipts:
+#   for f in .aiir-receipts/*.json; do aiir --verify "$f"; done
+#
+# ──────────────────────────────────────────────────────────────────────
+# QUICK START — add to your .gitlab-ci.yml:
+#
+#   include:
+#     - local: templates/gitlab-aiir-evidence.yml
+#
+# Or, if you mirror AIIR to your own GitLab instance, pin a ref that contains
+# this template. It first shipped in merge commit 9f0223e5; the v1.5.1 tag
+# predates it and will 404. Prefer an immutable commit SHA (best for trust) or
+# a release tag that includes this template.
+#
+#   include:
+#     - project: 'your-group/aiir'
+#       ref: '9f0223e59f3d54b148f09d93f3be5a01c3a26529'
+#       file: '/templates/gitlab-aiir-evidence.yml'
+#
+# ──────────────────────────────────────────────────────────────────────
+# REQUIREMENTS
+#   - Python 3.9+ (provided by python:3.11-slim image)
+#   - Zero runtime dependencies (aiir uses stdlib only)
+#   - No secrets required. No signing in this template.
+#
+# ──────────────────────────────────────────────────────────────────────
+# CUSTOMISATION — override variables in your pipeline:
+#
+#   variables:
+#     AIIR_VERSION: "1.5.1"          # Pin version (recommended)
+#     AIIR_EVIDENCE_EXPIRY: "90 days" # Artifact retention
+#     AIIR_AI_ONLY: "--ai-only"       # Set to skip non-AI commits
+#     AIIR_EXTRA_ARGS: ""             # Any additional aiir CLI flags
+#
+# ──────────────────────────────────────────────────────────────────────
+
+# --- Hidden base job ---
+.aiir-evidence-base:
+  image: python:3.11-slim
+  variables:
+    AIIR_VERSION: "1.5.1"
+    AIIR_EVIDENCE_EXPIRY: "90 days"
+    AIIR_AI_ONLY: ""
+    AIIR_EXTRA_ARGS: ""
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1
+    - pip install --quiet "aiir==${AIIR_VERSION}"
+
+# --- Evidence job for merge request pipelines ---
+aiir_evidence:
+  extends: .aiir-evidence-base
+  stage: test
+  script:
+    # Step 1: Generate the underlying AIIR commit receipt for the MR range.
+    # --gitlab-ci writes aiir.env with AIIR_* variables for downstream jobs.
+    - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --depth=100
+    - |
+      aiir \
+        --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..${CI_COMMIT_SHA}" \
+        --output .aiir-receipts/ \
+        --pretty \
+        --gitlab-ci \
+        ${AIIR_AI_ONLY:+"$AIIR_AI_ONLY"} \
+        ${AIIR_EXTRA_ARGS:+"$AIIR_EXTRA_ARGS"}
+
+    # Step 2: Extract fields from the generated receipt to assemble the
+    # gitlab_ai_provenance_evidence.v0 envelope.
+    #
+    # We read the most recent receipt file (the head commit receipt).
+    # If multiple commits are in the MR range, only the head commit receipt
+    # is used for the envelope subject. All receipts remain in .aiir-receipts/.
+    - |
+      . aiir.env 2>/dev/null || true
+
+      # Locate the receipt for the head commit (CI_COMMIT_SHA).
+      RECEIPT_FILE=$(ls -1 .aiir-receipts/*.json 2>/dev/null \
+        | xargs grep -l "\"sha\": \"${CI_COMMIT_SHA}\"" 2>/dev/null \
+        | head -1)
+
+      if [ -z "$RECEIPT_FILE" ]; then
+        # Fallback: use the most recently written receipt file.
+        RECEIPT_FILE=$(ls -1t .aiir-receipts/*.json 2>/dev/null | head -1)
+      fi
+
+      if [ -z "$RECEIPT_FILE" ]; then
+        echo "ERROR: No AIIR receipt file found in .aiir-receipts/" >&2
+        exit 1
+      fi
+
+      echo "Using receipt file: $RECEIPT_FILE"
+
+      # Extract fields from the receipt using Python (stdlib only, no jq needed).
+      python3 - "$RECEIPT_FILE" "$CI_COMMIT_SHA" <<'PYEOF'
+      import json, sys, os, re
+
+      receipt_path = sys.argv[1]
+      commit_sha   = sys.argv[2]
+
+      with open(receipt_path) as f:
+          receipt = json.load(f)
+
+      # --- receipt fields ---
+      receipt_id      = receipt.get("receipt_id", "")
+      content_hash    = receipt.get("content_hash", "")
+      producer_ver    = receipt.get("version", os.environ.get("AIIR_VERSION", "unknown"))
+
+      # --- signed detection ---
+      # A receipt is signed when it carries an embedded Sigstore bundle reference.
+      # This matches the logic in aiir._ledger._receipt_is_signed:
+      #   extensions.get("sigstore") or extensions.get("sigstore_bundle")
+      # TODO: Confirm whether a .sigstore sidecar file alongside the receipt JSON
+      # also counts as signed in this context (aiir._evidence checks for that too).
+      extensions_raw  = receipt.get("extensions", {})
+      extensions      = extensions_raw if isinstance(extensions_raw, dict) else {}
+      signed          = bool(extensions.get("sigstore") or extensions.get("sigstore_bundle"))
+
+      # --- AI attestation ---
+      ai_att          = receipt.get("ai_attestation", {})
+      is_ai           = ai_att.get("is_ai_authored", False)
+      signals         = ai_att.get("signals_detected", [])
+
+      # --- diff hash ---
+      # diff_hash is REQUIRED by the envelope schema. If the underlying receipt
+      # lacks commit.diff_hash, fail with a clear error rather than fabricating
+      # a zero hash or emitting invalid JSON.
+      commit_obj      = receipt.get("commit", {})
+      diff_hash       = commit_obj.get("diff_hash")
+      if not diff_hash:
+          print(
+              "ERROR: Underlying AIIR receipt is missing commit.diff_hash. "
+              "Cannot assemble a valid evidence envelope without it. "
+              f"Receipt file: {receipt_path}",
+              file=sys.stderr,
+          )
+          sys.exit(1)
+
+      # --- files changed ---
+      # The envelope change.files_changed is a LIST of file paths, sourced from
+      # the receipt's commit.files array. Note: commit.files_changed in the AIIR
+      # receipt is an INTEGER count — do NOT use it here.
+      #
+      # When commit.files is absent (commit.files_redacted=true or
+      # commit.files_capped=true), emit an empty list and record the redaction
+      # state under extensions so the information is not silently lost.
+      files_changed   = []
+      envelope_extensions = {}
+
+      if "files" in commit_obj:
+          files_changed = commit_obj["files"]
+      else:
+          # Files were redacted or capped — record the state in extensions.
+          if commit_obj.get("files_redacted"):
+              envelope_extensions["files_redacted"] = True
+          if commit_obj.get("files_capped"):
+              envelope_extensions["files_capped"] = True
+
+      # --- assemble envelope ---
+      envelope = {
+          "schema": "gitlab_ai_provenance_evidence.v0",
+          "subject": {
+              "kind": "gitlab.merge_request_pipeline",
+              "project_full_path": os.environ.get("CI_PROJECT_PATH", ""),
+              "merge_request_iid": int(os.environ.get("CI_MERGE_REQUEST_IID", "0")),
+              "pipeline_id": int(os.environ.get("CI_PIPELINE_ID", "0")),
+              "pipeline_sha": os.environ.get("CI_COMMIT_SHA", commit_sha),
+              "job_id": int(os.environ.get("CI_JOB_ID", "0")),
+              "job_name": os.environ.get("CI_JOB_NAME", "aiir_evidence"),
+          },
+          "change": {
+              "commit_sha": commit_sha,
+              "diff_hash": diff_hash,
+              "files_changed": files_changed,
+          },
+          "provenance": {
+              "declared_ai_involvement": is_ai,
+              "detection_boundary": "declared-metadata-only",
+              "signals": signals,
+          },
+          "receipt": {
+              "producer": "AIIR",
+              "producer_version": producer_ver,
+              "mode": "declared-ai-receipt",
+              "receipt_id": receipt_id,
+              "content_hash": content_hash,
+              # verification_status is "unverified" because no documented AIIR
+              # CLI command currently verifies the v0 envelope as a whole.
+              # TODO: upgrade to "valid"/"invalid" when that command is documented.
+              "verification_status": "unverified",
+              # verified_at is omitted when verification_status is "unverified".
+              "signed": signed,
+          },
+          "extensions": envelope_extensions,
+      }
+
+      out_path = "aiir-evidence.json"
+      with open(out_path, "w") as f:
+          json.dump(envelope, f, indent=2)
+          f.write("\n")
+
+      print(f"Written: {out_path}")
+      print(f"  schema:               {envelope['schema']}")
+      print(f"  project:              {envelope['subject']['project_full_path']}")
+      print(f"  merge_request_iid:    {envelope['subject']['merge_request_iid']}")
+      print(f"  pipeline_id:          {envelope['subject']['pipeline_id']}")
+      print(f"  commit_sha:           {envelope['change']['commit_sha']}")
+      print(f"  files_changed:        {len(envelope['change']['files_changed'])} paths")
+      if envelope_extensions:
+          print(f"  extensions:           {envelope_extensions}")
+      print(f"  declared_ai:          {envelope['provenance']['declared_ai_involvement']}")
+      print(f"  signals:              {envelope['provenance']['signals']}")
+      print(f"  receipt_id:           {envelope['receipt']['receipt_id']}")
+      print(f"  verification_status:  {envelope['receipt']['verification_status']}")
+      PYEOF
+
+    # Step 3: Print a summary line.
+    - |
+      echo "────────────────────────────────────────────────────"
+      echo "AIIR evidence artifact: aiir-evidence.json"
+      echo "Underlying receipts:    .aiir-receipts/"
+      echo "Verification status:    unverified"
+      echo ""
+      echo "To verify an underlying AIIR receipt independently:"
+      echo "  aiir --verify .aiir-receipts/<receipt>.json"
+      echo "Or loop over all receipts:"
+      echo "  for f in .aiir-receipts/*.json; do aiir --verify \"\$f\"; done"
+      echo "────────────────────────────────────────────────────"
+
+  artifacts:
+    paths:
+      - aiir-evidence.json
+      - .aiir-receipts/
+    reports:
+      dotenv: aiir.env
+    expire_in: $AIIR_EVIDENCE_EXPIRY
+    when: always
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

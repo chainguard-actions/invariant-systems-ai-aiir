@@ -1,0 +1,44 @@
+# Minimal N-of-M witness shortlist and policy for offline-verifiable releases.
+#
+# This file is an operator-facing checklist, not an AIIR runtime input.
+# AIIR consumes the matching trust-root.example.json document.
+
+version: 1
+profile: aiir-release-witnesses
+intent: offline verification for published release artifacts
+
+artifacts:
+  publish:
+    - rekor-bundle.json
+    - aiir-trust.json
+    - witnessed-checkpoint.txt
+    - VERIFY.md
+
+log:
+  name: rekor.sigstore.dev
+  verify:
+    - signed-checkpoint
+    - inclusion-proof
+    - consistency-proof-to-witnessed-checkpoint
+
+witnesses:
+  - name: omniwitness-public
+    role: public
+    trust_root_ref: trust-root.example.json#/witnesses/0
+  - name: acme-release-primary
+    role: org
+    trust_root_ref: trust-root.example.json#/witnesses/1
+  - name: acme-release-secondary
+    role: org
+    trust_root_ref: trust-root.example.json#/witnesses/2
+
+acceptance:
+  require_witnesses: 2-of-3
+  aiir_require_witnesses_arg: release
+  distinct_trust_anchors: true
+  fail_closed: true
+
+notes:
+  - Replace the sample key ids and public keys before production use.
+  - AIIR currently enforces the pinned N-of-M witness threshold from the trust root.
+  - If you need role constraints such as at least one public witness, add an external policy gate before publishing the bundle.

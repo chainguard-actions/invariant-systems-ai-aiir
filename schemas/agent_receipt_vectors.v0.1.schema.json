@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/agent_receipt_vectors.v0.1.schema.json",
+  "title": "AIIR Agent-Receipt Profile Test Vectors v0.1",
+  "description": "Schema for AIIR agent-receipt profile conformance vectors. Conforming implementations must produce byte-identical canonical JSON, content_hash, and record_id values for each vector input_core.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "description",
+    "contract_version",
+    "canonical_json_rules",
+    "hash_algorithm",
+    "record_id_format",
+    "generated_by",
+    "generated_at",
+    "vectors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string" },
+    "contract_version": { "const": "aiir/agent_receipt.v0.1" },
+    "canonical_json_rules": {
+      "type": "object",
+      "required": ["sort_keys", "separators", "ensure_ascii", "allow_nan", "depth_limit"],
+      "additionalProperties": false,
+      "properties": {
+        "sort_keys": { "const": true },
+        "separators": {
+          "type": "array",
+          "prefixItems": [{ "const": "," }, { "const": ":" }],
+          "items": false
+        },
+        "ensure_ascii": { "const": true },
+        "allow_nan": { "const": false },
+        "depth_limit": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "hash_algorithm": { "const": "SHA-256" },
+    "record_id_format": { "const": "a1-{first_32_hex_of_content_hash}" },
+    "generated_by": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "vectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "input_core", "expected"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^a-[0-9]{2}-[a-z0-9-]+$" },
+          "description": { "type": "string" },
+          "input_core": { "type": "object" },
+          "expected": {
+            "type": "object",
+            "required": ["canonical_json", "canonical_json_sha256", "content_hash", "record_id"],
+            "additionalProperties": false,
+            "properties": {
+              "canonical_json": { "type": "string" },
+              "canonical_json_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "content_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+              "record_id": { "type": "string", "pattern": "^a1-[0-9a-f]{32}$" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

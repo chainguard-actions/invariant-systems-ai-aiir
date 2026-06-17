@@ -1,0 +1,51 @@
+{
+  "$schema": "https://invariantsystems.io/schemas/aiir/negative_encoding_vectors.v1",
+  "description": "AIIR negative encoding vectors. Each vector shows a WRONG way to produce canonical JSON and the CORRECT way. Implementers can test their encoder against known misencoding traps.",
+  "spec_version": "2.0.0",
+  "generated_by": "schemas/test-vectors/generate_hardened_vectors.py",
+  "generated_at": "2026-03-25T00:00:00Z",
+  "count": 4,
+  "vectors": [
+    {
+      "id": "neg-01-unsorted-keys",
+      "description": "WRONG: top-level keys in insertion order instead of sorted \u2014 the hash would be different",
+      "correct_canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+      "correct_content_hash": "sha256:ff76d2a88adff37fcd3a37fa42bb52b8eec24750e123a6e9d6925ef9f5e719da",
+      "wrong_approach": "Using insertion-order key serialization instead of sort_keys=True",
+      "wrong_canonical_json_prefix": "{\"version\":\"1.0.12\",\"type\":\"aiir.commit_receipt\"",
+      "trap": "Python dicts preserve insertion order since 3.7, so json.dumps() without sort_keys=True may produce different output on different Python versions or when keys are inserted in different orders.",
+      "implementation_notes": "Always use sort_keys=True (Python), keys().sort() (JS), or equivalent. Key ordering must be pure ASCII/byte ordering."
+    },
+    {
+      "id": "neg-02-whitespace-in-canonical",
+      "description": "WRONG: canonical JSON with indent/whitespace \u2014 spaces change the hash",
+      "correct_canonical_json": "{\"ai_attestation\":{\"authorship_class\":\"human\",\"bot_signal_count\":0,\"bot_signals_detected\":[],\"detection_method\":\"heuristic_v2\",\"is_ai_authored\":false,\"is_bot_authored\":false,\"signal_count\":0,\"signals_detected\":[]},\"commit\":{\"author\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"committer\":{\"date\":\"2026-03-09T00:00:00Z\",\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"diff_hash\":\"sha256:a9b7bc7b29f22a8b1ae213c4105d73c39b9e3f218d75bb6a288207c1d86b96fe\",\"files\":[\"widget.py\"],\"files_changed\":1,\"message_hash\":\"sha256:375aca2c5a71c7ffaaa0c3602ed0f82d27986ce0776b5c5c1bc2d2a5638b18bb\",\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"subject\":\"feat: add widget\"},\"provenance\":{\"generator\":\"aiir.cli\",\"repository\":\"https://github.com/example/repo\",\"tool\":\"https://github.com/invariant-systems-ai/aiir@1.0.12\"},\"schema\":\"aiir/commit_receipt.v1\",\"type\":\"aiir.commit_receipt\",\"version\":\"1.0.12\"}",
+      "correct_content_hash": "sha256:ff76d2a88adff37fcd3a37fa42bb52b8eec24750e123a6e9d6925ef9f5e719da",
+      "wrong_canonical_json_prefix": "{\n  \"ai_attestation\": {\n    \"authorship_class\": \"human\",\n    \"bot_signal_count\": 0,\n    \"bot_signals...",
+      "wrong_content_hash": "sha256:841019f49febb50856770378ec7024e07b21abdab84bf89af72db171504f6379",
+      "trap": "json.dumps() defaults to separators=(', ', ': ') in Python (note spaces). Canonical JSON requires separators=(',', ':') \u2014 no spaces.",
+      "implementation_notes": "Use separators=(',', ':') in Python. In JS, JSON.stringify(obj) with no space argument. Verify no whitespace between tokens."
+    },
+    {
+      "id": "neg-03-non-ascii-unescaped",
+      "description": "WRONG: Unicode chars left as UTF-8 instead of \\uXXXX escaped \u2014 different bytes, different hash",
+      "correct_canonical_json_contains": "\\u00c9milie",
+      "correct_content_hash": "sha256:f6c5ce36b5d2e59ae78ecc409ab06caf2e1061b1030d225f812cd2e4ec3efc2e",
+      "wrong_canonical_json_contains": "\u00c9milie",
+      "wrong_content_hash": "sha256:ae6d84999c4a04c95c1c863dc73adb8f4a83e9c896d7931bab1732fab1c92d17",
+      "trap": "In Python, json.dumps(ensure_ascii=False) writes raw UTF-8. Canonical JSON requires ensure_ascii=True. In JS, JSON.stringify() does NOT escape non-ASCII by default \u2014 you must post-process.",
+      "implementation_notes": "Python: ensure_ascii=True. JS: JSON.stringify() then replace non-ASCII with \\uXXXX. Go: use json.Marshal which escapes by default."
+    },
+    {
+      "id": "neg-04-nfc-normalization-before-hash",
+      "description": "WRONG: NFC-normalizing string values before hashing \u2014 the decomposed form (A + U+0300) and composed form (U+00C0) produce different hashes",
+      "decomposed_input": "A\\u0300lice (A + COMBINING GRAVE ACCENT)",
+      "composed_equivalent": "\\u00c0lice (LATIN CAPITAL LETTER A WITH GRAVE)",
+      "correct_content_hash": "sha256:d2a02cb1aa22ae0ed99dfe98f0fcd8e58a8d622f06418c9d9f9c97d5a96779c8",
+      "wrong_content_hash_if_nfc": "sha256:c4954f8fba863eacea1ef3da7080176e38d8ada0593e8c3879ec475cb9d66801",
+      "hashes_differ": true,
+      "trap": "Some languages or libraries NFC-normalize input strings automatically. Canonical JSON must preserve the original byte sequence. Do NOT normalize before hashing.",
+      "implementation_notes": "The detection layer uses NFKC + TR39 confusable resolution for signal matching. The canonical JSON layer must NOT normalize. These are separate concerns."
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+# AIIR Example: GitHub Actions Integration
+
+This example demonstrates AIIR (AI Integrity Receipts) in a real GitHub Actions workflow. It shows how to automatically generate cryptographic receipts for every commit that touches your codebase — with special attention to commits with declared AI involvement.
+
+## What This Does
+
+Every push to `main` and every pull request automatically:
+
+1. **Scans commits** for AI authorship signals (Copilot, ChatGPT, Claude, Cursor, Windsurf, etc.)
+2. **Generates receipts** — content-addressed JSON records proving what each commit contained
+3. **Signs receipts** with Sigstore (keyless, OIDC-based — no key management)
+4. **Uploads artifacts** — receipts are stored as GitHub Actions artifacts for 90 days
+5. **Posts a summary** — receipt details appear in the GitHub Actions step summary
+
+## Quick Start
+
+### 1. Copy the workflow
+
+Copy [`.github/workflows/aiir.yml`](.github/workflows/aiir.yml) into your repository's `.github/workflows/` directory.
+
+If you also want to publish an offline witness bundle for release artifacts,
+copy [`.github/workflows/aiir-witnessed-release-draft.yml`](.github/workflows/aiir-witnessed-release-draft.yml)
+plus the example pack in [`../witness-quorum/`](../witness-quorum/). That
+workflow is intentionally a draft: you replace the Rekor v2 / witness
+acquisition step with your own client, then it assembles and publishes
+`rekor-bundle.json`, `aiir-trust.json`, `witnessed-checkpoint.txt`, and
+`VERIFY.md` as release assets.
+
+AIIR's own repo-owned Rekor automation lives separately at
+[`../../.github/workflows/offline-rekor-release.yml`](../../.github/workflows/offline-rekor-release.yml).
+That workflow is runnable as-is because it derives `aiir.rekor.bundle.v1`
+documents from GitHub attestations already produced by the release pipeline.
+It does not attempt to publish a production witness checkpoint or trust root.
+
+### 2. Enable `id-token` permissions
+
+Sigstore keyless signing requires OIDC. The workflow already includes:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write # Required for Sigstore
+```
+
+### 3. Push a commit
+
+That's it. The next push to `main` or PR will generate receipts automatically.
+
+## Workflow File
+
+```yaml
+# .github/workflows/aiir.yml
+name: AIIR Receipts
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # Full history for accurate commit range
+
+      - name: Generate AIIR receipts
+        uses: invariant-systems-ai/aiir@a54fe440a2be18fe51ad30149f1bbab944d578e5 # v1
+        with:
+          sign: "true" # Sigstore keyless signing
+          output-dir: ".aiir-receipts"
+```
+
+These examples are pinned to full action SHAs for supply-chain safety.
+
+## What a Receipt Looks Like
+
+```json
+{
+  "type": "aiir.commit_receipt",
+  "schema": "aiir/commit_receipt.v2",
+  "version": "1.5.1",
+  "commit": {
+    "sha": "a1b2c3d4e5f6...",
+    "author": { "name": "Jane Dev", "email": "jane@example.com" },
+    "subject": "feat: add authentication module",
+    "files_changed": 3,
+    "files": ["src/auth.py", "tests/test_auth.py", "docs/auth.md"]
+  },
+  "ai_attestation": {
+    "is_ai_authored": true,
+    "signals_detected": ["message_match:co-authored-by: copilot"],
+    "signal_count": 1,
+    "is_bot_authored": false,
+    "bot_signals_detected": [],
+    "bot_signal_count": 0,
+    "authorship_class": "ai_assisted",
+    "detection_method": "heuristic_v2"
+  },
+  "provenance": {
+    "generator": "aiir.github",
+    "repository": "https://github.com/you/your-repo",
+    "tool": "https://github.com/invariant-systems-ai/aiir@1.5.1"
+  },
+  "receipt_id": "g1-abc123...",
+  "content_hash": "sha256:def456...",
+  "timestamp": "2026-05-02T12:00:00Z"
+}
+```
+
+## Advanced: Policy Enforcement
+
+Add policy checks to your CI to enforce AI authorship limits:
+
+```yaml
+- name: Check AIIR policy
+  run: |
+    pip install aiir
+    aiir --check --policy strict --range ${{ github.event.before }}..${{ github.event.after }}
+```
+
+Policy presets:
+
+- **`strict`**: Max 50% AI commits, signing required, hard-fail
+- **`balanced`**: Signing recommended, soft-fail
+- **`permissive`**: Warn-only, no enforcement
+
+## Advanced: Release Verification
+
+Before a release, verify all receipts in the release range:
+
+```yaml
+- name: Verify release
+  run: |
+    pip install aiir
+    aiir --verify-release --receipts .aiir-receipts/ --policy balanced --emit-vsa
+```
+
+This produces a **Verification Summary Attestation (VSA)** — an SLSA-style attestation confirming the release passed policy checks.
+
+For a minimal `2-of-3` witness rollout that stays offline-verifiable, see the
+example pack in [`../witness-quorum/`](../witness-quorum/).
+
+## EU AI Act Compliance
+
+AIIR receipts provide the technical controls for [EU AI Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj) Article 50 transparency requirements:
+
+- **Attribution**: Every AI-authored commit is identified with specific signals
+- **Auditability**: Receipts are content-addressed and tamper-evident
+- **Non-repudiation**: Sigstore signing provides cryptographic proof of origin
+- **Coverage tracking**: Release verification measures what percentage of code was AI-authored
+
+## Links
+
+- [AIIR GitHub](https://github.com/invariant-systems-ai/aiir)
+- [AIIR on PyPI](https://pypi.org/project/aiir/)
+- [Specification](https://github.com/invariant-systems-ai/aiir/blob/main/SPEC.md)
+- [Threat Model](https://github.com/invariant-systems-ai/aiir/blob/main/THREAT_MODEL.md)
+- [Invariant Systems](https://invariantsystems.io)
+
+## License
+
+Apache-2.0 — same as AIIR itself.
