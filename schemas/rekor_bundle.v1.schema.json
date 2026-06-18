@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invariantsystems.io/schemas/aiir/rekor_bundle.v1.schema.json",
+  "title": "AIIR Rekor Bundle v1",
+  "description": "Reduced offline Rekor bundle with inclusion and optional consistency proofs.",
+  "type": "object",
+  "required": [
+    "schema",
+    "log_id",
+    "artifact_sha256",
+    "body_b64",
+    "log_index",
+    "integrated_time",
+    "inclusion_proof"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "aiir.rekor.bundle.v1"
+    },
+    "log_id": {
+      "type": "string"
+    },
+    "entry_uuid": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "body_b64": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "body_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "log_index": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      ]
+    },
+    "integrated_time": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      ]
+    },
+    "inclusion_proof": {
+      "$ref": "#/$defs/InclusionProof"
+    },
+    "consistency_proof": {
+      "$ref": "#/$defs/ConsistencyProof"
+    }
+  },
+  "$defs": {
+    "HashB64": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "UInt": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      ]
+    },
+    "InclusionProof": {
+      "type": "object",
+      "required": ["tree_size", "root_hash", "hashes", "checkpoint"],
+      "additionalProperties": false,
+      "properties": {
+        "tree_size": {
+          "$ref": "#/$defs/UInt"
+        },
+        "root_hash": {
+          "$ref": "#/$defs/HashB64"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HashB64"
+          }
+        },
+        "checkpoint": {
+          "type": "string"
+        }
+      }
+    },
+    "ConsistencyProof": {
+      "type": "object",
+      "required": ["old_tree_size", "new_tree_size", "hashes"],
+      "additionalProperties": false,
+      "properties": {
+        "old_tree_size": {
+          "$ref": "#/$defs/UInt"
+        },
+        "new_tree_size": {
+          "$ref": "#/$defs/UInt"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HashB64"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "ai_coverage_trend": [
+    {
+      "ai_percentage": 33.3,
+      "ai_receipts": 1,
+      "date": "2026-05-01",
+      "heuristic": 1,
+      "provable": 0,
+      "signed": 0,
+      "total": 3,
+      "unsigned": 2
+    }
+  ],
+  "ai_receipts": 1,
+  "evidence_tiers": {
+    "heuristic": 1,
+    "provable": 0,
+    "signed": 0,
+    "unsigned": 2
+  },
+  "format": "aiir.evidence_summary.v1",
+  "generated_at": "2026-06-06T19:03:01Z",
+  "hot_path_ai_changes": [
+    {
+      "count": 1,
+      "heuristic": 1,
+      "latest_commit": "a200000000000000000000000000000000000000",
+      "path": "tests/test_checkout.py",
+      "provable": 0,
+      "signed": 0,
+      "unsigned": 0
+    }
+  ],
+  "release_proof_readiness": {
+    "needs_signing": 3,
+    "ready_ratio": 0.0,
+    "ready_receipts": 0,
+    "status": "unsigned"
+  },
+  "top_ai_systems": [],
+  "total_receipts": 3,
+  "unsigned_risk": {
+    "ai_receipts_without_signing": 1,
+    "heuristic_only": 1,
+    "provable_but_unsigned": 0
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "ai_attestation": {
+    "authorship_class": "human",
+    "detection_method": "heuristic_v2",
+    "is_ai_authored": false,
+    "is_bot_authored": false,
+    "signal_count": 0,
+    "signals_detected": []
+  },
+  "commit": {
+    "author": {
+      "date": "2026-05-01T10:00:00Z",
+      "email": "dev@example.com",
+      "name": "Dev"
+    },
+    "committer": {
+      "date": "2026-05-01T10:00:00Z",
+      "email": "dev@example.com",
+      "name": "Dev"
+    },
+    "diff_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "files": [
+      "src/app.py"
+    ],
+    "files_changed": 1,
+    "message_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sha": "a300000000000000000000000000000000000000",
+    "subject": "fix: handle empty cart"
+  },
+  "content_hash": "sha256:3348f9ad4083bb627f12e550805f301b70bf0c6d0b5e34a32b9775aac83d43b8",
+  "extensions": {},
+  "provenance": {
+    "generator": "aiir/1.6.0",
+    "ref": "main",
+    "repository": "https://github.com/example/widget",
+    "tool": "https://github.com/invariant-systems-ai/aiir@v1.6.0"
+  },
+  "receipt_id": "g1-3348f9ad4083bb627f12e550805f301b",
+  "schema": "aiir/commit_receipt.v1",
+  "timestamp": "2026-05-01T10:00:00Z",
+  "type": "aiir.commit_receipt",
+  "version": "1.6.0"
+}

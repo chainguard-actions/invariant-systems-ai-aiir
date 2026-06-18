@@ -1,0 +1,13 @@
+# Ensure consistent line endings across platforms.
+# The sigstore example fixtures are content-addressed; CRLF conversion
+# on Windows would break the embedded SHA-256 digests.
+examples/sigstore-bundle/*.artifact    binary
+examples/sigstore-bundle/*.sigstore    binary
+examples/sigstore-bundle/*.json        binary
+examples/verify-pass-strict-fail/**/*.sigstore binary
+examples/verify-pass-strict-fail/**/*.json     binary
+
+# release-bundle-basic: all bundle files are content-addressed; CRLF
+# conversion on Windows would invalidate the embedded SHA-256 digests.
+examples/release-bundle-basic/bundle/**        binary
+examples/release-bundle-basic/receipts.jsonl   binary

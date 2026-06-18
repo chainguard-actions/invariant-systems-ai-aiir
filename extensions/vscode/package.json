@@ -1,0 +1,1252 @@
+{
+  "name": "aiir",
+  "displayName": "AIIR",
+  "description": "Local-first AI integrity receipts for git commits with active tool context.",
+  "version": "0.6.0",
+  "publisher": "invariant-systems",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/invariant-systems-ai/aiir"
+  },
+  "homepage": "https://invariantsystems.io",
+  "bugs": {
+    "url": "https://github.com/invariant-systems-ai/aiir/issues"
+  },
+  "badges": [
+    {
+      "url": "https://img.shields.io/github/license/invariant-systems-ai/aiir",
+      "href": "https://github.com/invariant-systems-ai/aiir/blob/main/LICENSE",
+      "description": "License"
+    },
+    {
+      "url": "https://img.shields.io/github/v/release/invariant-systems-ai/aiir",
+      "href": "https://github.com/invariant-systems-ai/aiir/releases",
+      "description": "Latest Release"
+    }
+  ],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#0f172a",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "extensionPack": [
+    "github.copilot-chat"
+  ],
+  "categories": [
+    "AI",
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "aiir",
+    "ai",
+    "receipts",
+    "verification",
+    "provenance",
+    "provable",
+    "integrity",
+    "compliance",
+    "audit",
+    "governance",
+    "git",
+    "sigstore",
+    "vscode",
+    "copilot",
+    "claude",
+    "chatgpt",
+    "eu-ai-act"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.aiir.json",
+    "workspaceContains:**/.receipts/*.json",
+    "workspaceContains:**/.aiir/**",
+    "onChatParticipant:aiir.chat"
+  ],
+  "main": "./out/extension.js",
+  "chatParticipantDetection": {
+    "participants": [
+      {
+        "id": "aiir.chat",
+        "disambiguationCategory": "ai_integrity",
+        "keywords": [
+          "aiir",
+          "receipt",
+          "ai integrity",
+          "provenance",
+          "ai audit",
+          "commit receipt"
+        ]
+      }
+    ]
+  },
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "aiir.chat",
+        "fullName": "AIIR",
+        "name": "aiir",
+        "description": "AI integrity receipts: generate, verify, explain, and check policy for git commit receipts.",
+        "isSticky": false,
+        "commands": [
+          {
+            "name": "receipt",
+            "description": "Generate a receipt for the current or specified commit"
+          },
+          {
+            "name": "verify",
+            "description": "Verify an AIIR receipt file"
+          },
+          {
+            "name": "stats",
+            "description": "Show receipt statistics for the repository"
+          },
+          {
+            "name": "explain",
+            "description": "Explain what an AIIR receipt proves"
+          },
+          {
+            "name": "policy",
+            "description": "Check repository policy compliance"
+          }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "aiir_receipt",
+        "tags": [
+          "aiir",
+          "receipt",
+          "ai",
+          "integrity",
+          "provenance"
+        ],
+        "displayName": "Generate AIIR Receipt",
+        "modelDescription": "Generate a tamper-evident receipt for a git commit that records AI involvement signals. Call this when the user wants to create proof of AI tool usage for a commit.",
+        "icon": "$(sparkle)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "commit": {
+              "type": "string",
+              "description": "Specific commit SHA to receipt. Default: HEAD."
+            },
+            "range": {
+              "type": "string",
+              "description": "Commit range to receipt (e.g., 'HEAD~3..HEAD')."
+            },
+            "pretty": {
+              "type": "boolean",
+              "description": "Return human-readable summary instead of raw JSON."
+            }
+          }
+        }
+      },
+      {
+        "name": "aiir_verify",
+        "tags": [
+          "aiir",
+          "verify",
+          "integrity",
+          "receipt"
+        ],
+        "displayName": "Verify AIIR Receipt",
+        "modelDescription": "Verify the integrity of an AIIR receipt file. Checks that content_hash and receipt_id are valid. Any modification invalidates the receipt.",
+        "icon": "$(verified)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Relative path to the receipt JSON file to verify. Omit to verify the latest active receipt."
+            }
+          }
+        }
+      },
+      {
+        "name": "aiir_stats",
+        "tags": [
+          "aiir",
+          "statistics",
+          "receipt",
+          "coverage"
+        ],
+        "displayName": "AIIR Receipt Statistics",
+        "modelDescription": "Show statistics for the AIIR receipt ledger. Returns receipt count, AI-authored percentage, unique authors, and date range.",
+        "icon": "$(graph)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "aiir_explain",
+        "tags": [
+          "aiir",
+          "explain",
+          "receipt",
+          "audit"
+        ],
+        "displayName": "Explain AIIR Receipt",
+        "modelDescription": "Explain what an AIIR receipt proves about a commit in plain language. Useful for understanding AI involvement signals and evidence tiers.",
+        "icon": "$(info)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Relative path to a receipt file to explain. Omit to explain the latest receipt."
+            }
+          }
+        }
+      },
+      {
+        "name": "aiir_policy_check",
+        "tags": [
+          "aiir",
+          "policy",
+          "compliance",
+          "governance"
+        ],
+        "displayName": "AIIR Policy Check",
+        "modelDescription": "Check whether the current repository meets its declared AIIR policy requirements. Returns pass/fail status with details on any gaps.",
+        "icon": "$(shield)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "aiir.generatePreferred",
+        "title": "AIIR: Record Commit Activity",
+        "category": "AIIR",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "aiir.generateReceipt",
+        "title": "AIIR: Generate Receipt",
+        "category": "AIIR",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "aiir.generateWithProvenance",
+        "title": "AIIR: Generate With Provenance",
+        "category": "AIIR",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "aiir.initializeRepo",
+        "title": "AIIR: Initialize Repository",
+        "category": "AIIR",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "aiir.healthCheck",
+        "title": "AIIR: Health Check",
+        "category": "AIIR",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "aiir.connectHub",
+        "title": "AIIR: Connect to Hub",
+        "category": "AIIR",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "aiir.disconnectHub",
+        "title": "AIIR: Disconnect from Hub",
+        "category": "AIIR",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "aiir.hubStatus",
+        "title": "AIIR: Hub Status",
+        "category": "AIIR",
+        "icon": "$(cloud)"
+      },
+      {
+        "command": "aiir.hubVerifyReceipt",
+        "title": "AIIR: Verify Receipt in Hub",
+        "category": "AIIR",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "aiir.hubLatestReport",
+        "title": "AIIR: Hub Latest Report",
+        "category": "AIIR",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "aiir.hubEvidencePack",
+        "title": "AIIR: Hub Evidence Pack",
+        "category": "AIIR",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "aiir.hubRunAttestation",
+        "title": "AIIR: Run Hub Attestation",
+        "category": "AIIR",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "aiir.openHubDashboard",
+        "title": "AIIR: Open Hub Dashboard",
+        "category": "AIIR",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "aiir.signUpForHub",
+        "title": "AIIR: Sign Up for Hub",
+        "category": "AIIR",
+        "icon": "$(account)"
+      },
+      {
+        "command": "aiir.hubBilling",
+        "title": "AIIR: Hub Plans and Access",
+        "category": "AIIR",
+        "icon": "$(credit-card)"
+      },
+      {
+        "command": "aiir.advancedSettings",
+        "title": "AIIR: Advanced Settings",
+        "category": "AIIR",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "aiir.securityPosture",
+        "title": "AIIR: Security Posture",
+        "category": "AIIR",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "aiir.rolloutPresets",
+        "title": "AIIR: Deployment Presets",
+        "category": "AIIR",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "aiir.readinessCheck",
+        "title": "AIIR: Commit Status",
+        "category": "AIIR",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "aiir.openWalkthrough",
+        "title": "AIIR: Getting Started",
+        "category": "AIIR",
+        "icon": "$(milestone)"
+      },
+      {
+        "command": "aiir.copyCliInstallCommand",
+        "title": "AIIR: Copy CLI Install Command",
+        "category": "AIIR",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "aiir.installCliNow",
+        "title": "AIIR: Install CLI",
+        "category": "AIIR",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "aiir.installSigstoreSupport",
+        "title": "AIIR: Install Sigstore Support",
+        "category": "AIIR",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "aiir.openCliInstallTerminal",
+        "title": "AIIR: Open CLI Install Terminal",
+        "category": "AIIR",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "aiir.enableAutoReceipting",
+        "title": "AIIR: Enable Auto-Receipting",
+        "category": "AIIR",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "aiir.disableAutoReceipting",
+        "title": "AIIR: Disable Auto-Receipting",
+        "category": "AIIR",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "aiir.verifyFile",
+        "title": "AIIR: Verify Receipt",
+        "category": "AIIR",
+        "icon": "$(verified)"
+      },
+      {
+        "command": "aiir.verifySelection",
+        "title": "AIIR: Verify Selected Receipt",
+        "category": "AIIR"
+      },
+      {
+        "command": "aiir.verifyAll",
+        "title": "AIIR: Verify All Receipts",
+        "category": "AIIR",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "aiir.verifyCbor",
+        "title": "AIIR: Verify CBOR Sidecar Integrity",
+        "category": "AIIR"
+      },
+      {
+        "command": "aiir.verifySigstore",
+        "title": "AIIR: Verify Sigstore Signature",
+        "category": "AIIR"
+      },
+      {
+        "command": "aiir.refresh",
+        "title": "AIIR: Refresh Receipts",
+        "category": "AIIR",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiir.refreshCommitExplorer",
+        "title": "AIIR: Refresh Commit Explorer",
+        "category": "AIIR",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiir.viewCommitFileDiff",
+        "title": "AIIR: View File Diff",
+        "category": "AIIR"
+      },
+      {
+        "command": "aiir.viewGovernanceDiff",
+        "title": "AIIR: View Governance Diff",
+        "category": "AIIR",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "aiir.toggleListener",
+        "title": "AIIR: Toggle AI Edit Tracking",
+        "category": "AIIR",
+        "icon": "$(radio-tower)"
+      },
+      {
+        "command": "aiir.toggleAIBlame",
+        "title": "AIIR: Toggle AI Blame Annotations",
+        "category": "AIIR",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "aiir.generateMissingReceipts",
+        "title": "AIIR: Generate Missing Receipts",
+        "category": "AIIR",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "aiir.viewReceiptForCommit",
+        "title": "AIIR: View Receipt for Commit",
+        "category": "AIIR"
+      },
+      {
+        "command": "aiir.showSummary",
+        "title": "AIIR: Show Receipt Summary",
+        "category": "AIIR",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "aiir.controlPanel",
+        "title": "AIIR: Control Panel",
+        "category": "AIIR",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "aiir.viewReceipt",
+        "title": "AIIR: View Receipt",
+        "category": "AIIR",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "aiir.openReceiptSource",
+        "title": "AIIR: Open Receipt JSON",
+        "category": "AIIR",
+        "icon": "$(json)"
+      },
+      {
+        "command": "aiir.openTreeFile",
+        "title": "AIIR: Open Changed File",
+        "category": "AIIR",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "aiir.copyReceiptSummary",
+        "title": "AIIR: Copy Receipt Summary",
+        "category": "AIIR",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "aiir.previewReceiptSummary",
+        "title": "AIIR: Preview Receipt Summary",
+        "category": "AIIR",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "aiir.repairReceipt",
+        "title": "AIIR: Repair Failed Receipt",
+        "category": "AIIR",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "aiir.openPolicyFile",
+        "title": "AIIR: Open Policy File",
+        "category": "AIIR",
+        "icon": "$(json)"
+      },
+      {
+        "command": "aiir.createWorkspacePolicy",
+        "title": "AIIR: Create Workspace Policy",
+        "category": "AIIR",
+        "icon": "$(json)"
+      },
+      {
+        "command": "aiir.editPolicyTargets",
+        "title": "AIIR: Edit Policy Targets",
+        "category": "AIIR",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "aiir.toggleCurrentPolicyTarget",
+        "title": "AIIR: Toggle Current Policy Target",
+        "category": "AIIR",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "aiir.reportBug",
+        "title": "AIIR: Report a Bug",
+        "category": "AIIR",
+        "icon": "$(report)"
+      },
+      {
+        "command": "aiir.configureMcpServer",
+        "title": "AIIR: Configure MCP Server for Copilot Chat",
+        "category": "AIIR",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "aiir.manageRepositories",
+        "title": "AIIR: Manage Repositories",
+        "category": "AIIR",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "aiir.switchRepository",
+        "title": "AIIR: Switch Repository",
+        "category": "AIIR",
+        "icon": "$(repo)"
+      },
+      {
+        "command": "aiir.openSigningGuide",
+        "title": "AIIR: Sigstore Signing Guide",
+        "category": "AIIR",
+        "icon": "$(verified)"
+      },
+      {
+        "command": "aiir.reviewReceipt",
+        "title": "AIIR: Review Commit",
+        "category": "AIIR",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "aiir.viewReviewHistory",
+        "title": "AIIR: View Review History",
+        "category": "AIIR",
+        "icon": "$(history)"
+      },
+      {
+        "command": "aiir.recordException",
+        "title": "AIIR: Record Compliance Exception",
+        "category": "AIIR",
+        "icon": "$(note)"
+      },
+      {
+        "command": "aiir.exportEvidencePack",
+        "title": "AIIR: Export Evidence Pack",
+        "category": "AIIR",
+        "icon": "$(package)"
+      },
+      {
+        "command": "aiir.purgeProvenanceQueue",
+        "title": "AIIR: Purge Provenance Queue",
+        "category": "AIIR",
+        "icon": "$(trash)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiir",
+          "title": "AIIR",
+          "icon": "media/aiir-shield.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiir": [
+        {
+          "id": "aiir.homeView",
+          "name": "Status",
+          "icon": "media/aiir-shield.svg",
+          "contextualTitle": "AIIR Status"
+        },
+        {
+          "id": "aiir.commitExplorer",
+          "name": "Coverage",
+          "icon": "media/aiir-shield.svg",
+          "contextualTitle": "AIIR Coverage",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "aiir.receiptExplorer",
+          "name": "Receipts",
+          "icon": "media/aiir-shield.svg",
+          "contextualTitle": "AIIR",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "aiir.commitExplorer",
+        "contents": "No commit coverage yet.\n\nOpen a git repository to see which commits already have AIIR records and which still need one.\n\n[$(checklist) Open commit status](command:aiir.readinessCheck)\n[$(milestone) Open getting started](command:aiir.openWalkthrough)"
+      },
+      {
+        "view": "aiir.receiptExplorer",
+        "contents": "No receipts found yet.\n\nStart with the default path:\n\n[$(checklist) Open commit status](command:aiir.readinessCheck)\n[$(milestone) Open getting started](command:aiir.openWalkthrough)\n\nNeed the CLI first? [$(cloud-download) Install CLI](command:aiir.installCliNow)."
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiir.refreshCommitExplorer",
+          "when": "view == aiir.commitExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.toggleListener",
+          "when": "view == aiir.commitExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.generateMissingReceipts",
+          "when": "view == aiir.commitExplorer && aiir.showAdvancedCommands",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.readinessCheck",
+          "when": "view == aiir.homeView",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.switchRepository",
+          "when": "view == aiir.homeView && aiir.multipleAccessibleRepositories",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.switchRepository",
+          "when": "view == aiir.commitExplorer && aiir.multipleAccessibleRepositories",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.generateWithProvenance",
+          "when": "view == aiir.receiptExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.refresh",
+          "when": "view == aiir.receiptExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.showSummary",
+          "when": "view == aiir.receiptExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.manageRepositories",
+          "when": "view == aiir.receiptExplorer && aiir.canUseSharedRepositories && aiir.showAdvancedCommands",
+          "group": "navigation"
+        },
+        {
+          "command": "aiir.switchRepository",
+          "when": "view == aiir.receiptExplorer && aiir.multipleAccessibleRepositories",
+          "group": "navigation"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "aiir.generatePreferred",
+          "when": "scmProvider == git && aiir.headReceiptMissing && aiir.cliAvailable",
+          "group": "4_aiir@1"
+        },
+        {
+          "command": "aiir.readinessCheck",
+          "when": "scmProvider == git && aiir.headReceiptMissing && !aiir.cliAvailable",
+          "group": "4_aiir@2"
+        },
+        {
+          "command": "aiir.enableAutoReceipting",
+          "when": "scmProvider == git && aiir.headReceiptMissing && aiir.cliAvailable && aiir.activeAIToolDetected && !aiir.autoReceiptingManaged",
+          "group": "4_aiir@3"
+        },
+        {
+          "command": "aiir.switchRepository",
+          "when": "scmProvider == git && aiir.multipleAccessibleRepositories",
+          "group": "4_aiir@4"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aiir.verifyFile",
+          "when": "resourceExtname == .json",
+          "group": "aiir@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "aiir.verifySelection",
+          "when": "editorHasSelection",
+          "group": "aiir@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "aiir.verifyFile",
+          "when": "resourceFilename =~ /\\.aiir\\.json$/",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aiir.viewReceipt",
+          "when": "view == aiir.receiptExplorer && viewItem =~ /^receipt-(valid|invalid)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiir.verifyFile",
+          "when": "view == aiir.receiptExplorer && viewItem =~ /^receipt-(valid|invalid)$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "aiir.openReceiptSource",
+          "when": "view == aiir.receiptExplorer && viewItem =~ /^receipt-(valid|invalid)$/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aiir.copyReceiptSummary",
+          "when": "view == aiir.receiptExplorer && viewItem =~ /^receipt-(valid|invalid)$/",
+          "group": "navigation@2"
+        },
+        {
+          "command": "aiir.repairReceipt",
+          "when": "view == aiir.receiptExplorer && viewItem == receipt-invalid",
+          "group": "inline@3"
+        },
+        {
+          "command": "aiir.repairReceipt",
+          "when": "view == aiir.receiptExplorer && viewItem == receipt-invalid",
+          "group": "navigation@2.5"
+        },
+        {
+          "command": "aiir.openTreeFile",
+          "when": "view == aiir.receiptExplorer && viewItem == receipt-file",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiir.reviewReceipt",
+          "when": "view == aiir.receiptExplorer && viewItem =~ /^receipt-(valid|invalid)$/ && aiir.showAdvancedCommands",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "aiir.readinessCheck"
+        },
+        {
+          "command": "aiir.generatePreferred",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.generateReceipt",
+          "when": "false"
+        },
+        {
+          "command": "aiir.installCliNow"
+        },
+        {
+          "command": "aiir.copyCliInstallCommand",
+          "when": "false"
+        },
+        {
+          "command": "aiir.openCliInstallTerminal",
+          "when": "false"
+        },
+        {
+          "command": "aiir.copyReceiptSummary",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.verifyAll",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.repairReceipt",
+          "when": "false"
+        },
+        {
+          "command": "aiir.securityPosture",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.rolloutPresets",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.advancedSettings",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.openReceiptSource",
+          "when": "false"
+        },
+        {
+          "command": "aiir.openTreeFile",
+          "when": "false"
+        },
+        {
+          "command": "aiir.openWalkthrough"
+        },
+        {
+          "command": "aiir.connectHub",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && !aiir.hubConnected"
+        },
+        {
+          "command": "aiir.disconnectHub",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.hubConnected"
+        },
+        {
+          "command": "aiir.disableAutoReceipting",
+          "when": "false"
+        },
+        {
+          "command": "aiir.enableAutoReceipting",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.healthCheck",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.hubEvidencePack",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.canUseCompliance"
+        },
+        {
+          "command": "aiir.hubLatestReport",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.canRemoteSync"
+        },
+        {
+          "command": "aiir.hubRunAttestation",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.canRemoteSync"
+        },
+        {
+          "command": "aiir.hubStatus",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed"
+        },
+        {
+          "command": "aiir.hubVerifyReceipt",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.canRemoteSync"
+        },
+        {
+          "command": "aiir.initializeRepo",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.generateWithProvenance",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.openHubDashboard",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.hubConnected"
+        },
+        {
+          "command": "aiir.hubBilling",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.reportBug"
+        },
+        {
+          "command": "aiir.configureMcpServer",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.installSigstoreSupport",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.signUpForHub",
+          "when": "workspaceFolderCount > 0 && aiir.networkAllowed && !aiir.canRemoteSync"
+        },
+        {
+          "command": "aiir.controlPanel",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.createWorkspacePolicy",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiir.openPolicyFile",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.editPolicyTargets",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.toggleCurrentPolicyTarget",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.viewReceipt",
+          "when": "false"
+        },
+        {
+          "command": "aiir.previewReceiptSummary",
+          "when": "false"
+        },
+        {
+          "command": "aiir.verifySelection",
+          "when": "false"
+        },
+        {
+          "command": "aiir.verifyCbor",
+          "when": "false"
+        },
+        {
+          "command": "aiir.verifySigstore",
+          "when": "false"
+        },
+        {
+          "command": "aiir.openSigningGuide",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.reviewReceipt",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.viewReviewHistory",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.recordException",
+          "when": "workspaceFolderCount > 0 && aiir.regulatedMode && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.exportEvidencePack",
+          "when": "workspaceFolderCount > 0 && aiir.canUseCompliance && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.manageRepositories",
+          "when": "workspaceFolderCount > 0 && aiir.canUseSharedRepositories && aiir.showAdvancedCommands"
+        },
+        {
+          "command": "aiir.switchRepository",
+          "when": "workspaceFolderCount > 1 && aiir.multipleAccessibleRepositories"
+        },
+        {
+          "command": "aiir.purgeProvenanceQueue",
+          "when": "workspaceFolderCount > 0 && aiir.showAdvancedCommands"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "aiirGettingStarted",
+        "title": "Get Started With AIIR",
+        "description": "Record the current commit, review the result, and turn on lower-friction follow-ups only when you want them.",
+        "steps": [
+          {
+            "id": "overview",
+            "title": "Check the current commit",
+            "description": "Start with the commit status view when you want AIIR to explain what the current repository needs. If the CLI or local setup is missing, AIIR can route you through it from there.\n\n[Open commit status](command:aiir.readinessCheck)",
+            "media": {
+              "markdown": "media/walkthrough-overview.md"
+            },
+            "completionEvents": [
+              "onCommand:aiir.readinessCheck"
+            ]
+          },
+          {
+            "id": "generateReceipt",
+            "title": "Record this commit",
+            "description": "Use the default Record Commit Activity action. AIIR prefers deterministic provenance when an active file supports it, falls back automatically when needed, and completes the missing setup path when the repository is not ready yet.\n\n[Record commit activity](command:aiir.generatePreferred)",
+            "media": {
+              "markdown": "media/walkthrough-overview.md"
+            },
+            "completionEvents": [
+              "onCommand:aiir.generatePreferred"
+            ]
+          },
+          {
+            "id": "reviewSummary",
+            "title": "Review or share the result",
+            "description": "After recording a commit, open the summary, copy the PR-ready handoff, or verify receipts in place from the same AIIR shell.\n\n[Open the receipt summary](command:aiir.showSummary)\n[Copy the latest receipt summary](command:aiir.copyReceiptSummary)\n[Verify all receipts](command:aiir.verifyAll)",
+            "media": {
+              "markdown": "media/walkthrough-overview.md"
+            },
+            "completionEvents": [
+              "onCommand:aiir.showSummary",
+              "onCommand:aiir.copyReceiptSummary",
+              "onCommand:aiir.verifyAll"
+            ]
+          },
+          {
+            "id": "enableAutomation",
+            "title": "Optional: lower-friction follow-ups",
+            "description": "When you want repeat work to fade into the background, turn on managed auto-receipting or open the health check. These are optional follow-ups, not required for the first commit.\n\n[Enable auto-receipting](command:aiir.enableAutoReceipting)\n[Run a health check](command:aiir.healthCheck)",
+            "media": {
+              "markdown": "media/walkthrough-hardening.md"
+            },
+            "completionEvents": [
+              "onCommand:aiir.enableAutoReceipting",
+              "onCommand:aiir.healthCheck"
+            ]
+          },
+          {
+            "id": "copilotChat",
+            "title": "Ask @aiir in Copilot Chat",
+            "description": "Type `@aiir` in Copilot Chat to generate receipts, verify commits, explain AI signals, or check policy compliance, without leaving the conversation.\n\n[Open Copilot Chat](command:workbench.action.chat.open)",
+            "media": {
+              "markdown": "media/walkthrough-overview.md"
+            },
+            "completionEvents": [
+              "onChatParticipantUsed:aiir.chat"
+            ]
+          }
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "aiir-receipt",
+        "aliases": [
+          "AIIR Receipt"
+        ],
+        "extensions": [
+          ".aiir.json"
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "AIIR",
+      "properties": {
+        "aiir.cliPath": {
+          "type": "string",
+          "default": "aiir",
+          "scope": "machine",
+          "order": 1,
+          "description": "Path to the AIIR CLI executable used by the VS Code extension when generating receipts."
+        },
+        "aiir.agentModelHint": {
+          "type": "string",
+          "default": "",
+          "order": 2,
+          "description": "Optional declared model class to write into local receipt agent attestation when generating receipts from VS Code, for example 'claude-sonnet-4' or 'gpt-5'."
+        },
+        "aiir.showAdvancedCommands": {
+          "type": "boolean",
+          "default": false,
+          "order": 6,
+          "description": "Show advanced operator commands such as control panel, security posture, deployment presets, policy editing, and Hub plans directly in the command palette. Recommended off for the default single-seat workflow."
+        },
+        "aiir.autoReceiptArgs": {
+          "type": "array",
+          "default": [
+            "--pretty"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "order": 3,
+          "description": "Arguments passed to the managed AIIR post-commit hook when auto-receipting is enabled."
+        },
+        "aiir.commitExplorerLimit": {
+          "type": "number",
+          "default": 20,
+          "minimum": 5,
+          "maximum": 100,
+          "order": 4,
+          "description": "Number of recent commits to show in the Coverage view."
+        },
+        "aiir.listener.enabled": {
+          "type": "boolean",
+          "default": false,
+          "order": 5,
+          "description": "Enable passive AI edit tracking. Off by default. When active, AIIR records file-level provenance in .aiir/editor_provenance.jsonl while active AI coding tools are editing this workspace."
+        },
+        "aiir.aiBlame.enabled": {
+          "type": "boolean",
+          "default": false,
+          "order": 6,
+          "description": "Show inline gutter annotations on lines committed with AI assistance. Cross-references git blame with AIIR receipt data to highlight AI-assisted and bot-authored lines."
+        },
+        "aiir.provenanceRetainPrompts": {
+          "type": "boolean",
+          "default": false,
+          "order": 7,
+          "description": "WARNING: when enabled, provable-mode provenance records include raw prompt text, which may contain credentials, proprietary code, or personal data. When disabled (default), only file hashes and operation metadata are stored."
+        },
+        "aiir.provenanceRetentionDays": {
+          "type": "number",
+          "default": 0,
+          "order": 8,
+          "description": "Number of days to retain consumed provenance records before automatic cleanup. 0 means no automatic cleanup."
+        },
+        "aiir.enforceWorkspaceIsolation": {
+          "type": "boolean",
+          "default": false,
+          "order": 20,
+          "description": "Advanced: when true, automatic discovery in multi-root workspaces is limited to aiir.allowedWorkspaceFolders. Single-root workspaces remain accessible by default. Enable this only when you need workspace isolation."
+        },
+        "aiir.allowedWorkspaceFolders": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "order": 21,
+          "description": "Advanced: folder names or absolute paths that AIIR may scan and operate on in the current workspace. In multi-root workspaces with isolation enabled, folders outside this allowlist are ignored."
+        },
+        "aiir.strictLocalOnly": {
+          "type": "boolean",
+          "default": true,
+          "order": 22,
+          "description": "Advanced: disable all Hub and network-backed commands. This is the default local-only posture."
+        },
+        "aiir.enableHubFeatures": {
+          "type": "boolean",
+          "default": false,
+          "order": 23,
+          "description": "Advanced: enable optional AIIR Hub integration features. When false (default), the extension operates in local-only mode."
+        },
+        "aiir.hubBaseUrl": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "order": 24,
+          "description": "Advanced: base URL for optional AIIR Hub API calls. Ignored while aiir.strictLocalOnly remains enabled. Machine-scoped to prevent workspace settings from redirecting the stored Hub bearer token."
+        },
+        "aiir.hubTenantId": {
+          "type": "string",
+          "default": "",
+          "order": 25,
+          "description": "Advanced: tenant ID for optional AIIR Hub requests. Ignored while aiir.strictLocalOnly remains enabled."
+        },
+        "aiir.hubSignupEndpoint": {
+          "type": "string",
+          "default": "",
+          "order": 26,
+          "description": "Advanced: endpoint used for optional AIIR Hub signup flows. Ignored while aiir.strictLocalOnly remains enabled."
+        },
+        "aiir.regulatedMode": {
+          "type": "boolean",
+          "default": false,
+          "order": 27,
+          "description": "Advanced: when enabled, AIIR treats the repository as covered only when the evidence bar for high-risk regulated workflows is met (policy enabled, HEAD receipted, minimum evidence tier, review attestation)."
+        },
+        "aiir.injectTrailers": {
+          "type": "boolean",
+          "default": false,
+          "order": 28,
+          "description": "Advanced: when enabled, receipt generation and auto-receipting append AIIR trailers (AIIR-Receipt, AIIR-AI) to the last commit message via git commit --amend. Note: this rewrites local history."
+        },
+        "aiir.lockPreset": {
+          "type": "string",
+          "default": "",
+          "order": 29,
+          "description": "Advanced: lock the workspace to a named deployment preset. Individual settings covered by the preset cannot be changed until aiir.lockPreset is cleared."
+        },
+        "aiir.listener.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "order": 30,
+          "description": "Advanced: automatically flush passive listener captures to the provenance queue. When false, captures are held in memory until a manual save or commit."
+        },
+        "aiir.listener.debounceMs": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 500,
+          "maximum": 30000,
+          "order": 31,
+          "description": "Advanced: milliseconds of quiet time after the last edit before the passive listener captures a provenance snapshot."
+        },
+        "aiir.listener.excludePatterns": {
+          "type": "array",
+          "default": [
+            "**/.aiir/**",
+            "**/node_modules/**",
+            "**/.git/**"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "order": 32,
+          "description": "Advanced: glob patterns that passive AI edit tracking should ignore."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "marketplace:sync": "node ./scripts/update-marketplace-packet.js",
+    "test": "npm run compile && node --test test/*.test.js",
+    "test:extension-host": "npm run compile && node ./test/extension-host/run.js",
+    "test:coverage:threat": "node ./scripts/check-threat-coverage.js",
+    "test:mutations:threat": "node ./scripts/run-threat-mutations.js",
+    "package": "npm run compile && npm run marketplace:sync && vsce package",
+    "publish:marketplace": "npm run compile && npm run marketplace:sync && vsce publish",
+    "package:pre-release": "npm run compile && npm run marketplace:sync && vsce package --pre-release",
+    "publish:marketplace:pre-release": "npm run compile && npm run marketplace:sync && vsce publish --pre-release",
+    "lint": "eslint src test scripts --ext .ts,.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "cheerio": "1.0.0-rc.12",
+    "eslint": "^8.57.1",
+    "mocha": "^11.1.0",
+    "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "cheerio": "1.0.0-rc.12"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In untrusted workspaces, AIIR disables CLI execution, hook management, and file-writing operations. Receipt viewing and verification remain available."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "AIIR requires local git repositories and filesystem access."
+    }
+  }
+}

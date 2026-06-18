@@ -1,0 +1,216 @@
+# Contributing to AIIR
+
+Thank you for your interest in AIIR! We welcome contributions from the community.
+
+## Quick start
+
+```bash
+git clone https://github.com/invariant-systems-ai/aiir.git
+cd aiir
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"    # installs pytest + hypothesis
+pip install pre-commit     # pre-commit is NOT in [dev] — install separately
+pre-commit install && pre-commit install --hook-type post-commit --hook-type pre-push
+python -m pytest tests/ -q  # see CI for current test count, ~4 min
+```
+
+> **Note**: `pre-commit` is not included in the `[dev]` extra in `pyproject.toml`
+> (it is a toolchain dependency, not a test dependency). Install it explicitly
+> with `pip install pre-commit` after activating your venv. A future release
+> may add it to the `[dev]` extra to simplify the quick-start, tracked in
+> the `pyproject.toml` coordination backlog.
+
+If `pre-commit install` reports migration mode and keeps a
+`.git/hooks/post-commit.legacy` file, inspect that legacy hook before leaving
+it in place. A stale AIIR post-commit hook there can run alongside pre-commit
+and generate duplicate local receipts.
+
+> **Note**: `pip install -e ".[dev]"` installs `hypothesis` (property-based fuzz
+> testing) and `pytest`. The pre-commit hooks enforce secret scanning, linting,
+> and a local CI preflight on every push. If you install only `pytest`, fuzz
+> tests in `tests/test_fuzz.py` will be skipped gracefully; all other tests
+> pass without `hypothesis`. CI always installs both.
+
+## Ways to contribute
+
+- **Bug reports**: [open an issue](https://github.com/invariant-systems-ai/aiir/issues/new?template=bug_report.yml)
+- **Feature requests**: [start a discussion](https://github.com/invariant-systems-ai/aiir/issues/new?template=feature_request.yml)
+- **Security vulnerabilities**: see [SECURITY.md](SECURITY.md) (do **not** open a public issue)
+- **Code contributions**: fork, branch, PR (see below)
+
+## Maintainer help wanted
+
+AIIR is currently maintained with a small maintainer surface. Contributions are
+welcome, but the active roadmap is intentionally demand-led.
+
+Good first areas:
+
+- docs corrections and clearer examples
+- GitHub Actions and GitLab CI template fixes
+- schema validation and conformance fixtures
+- security review of receipt verification behavior
+- real-world reports from teams piloting AI provenance workflows
+
+Larger features should start with an issue or discussion that explains the
+user, workflow, and maintenance owner. We may decline speculative integrations
+that add long-term surface area without a committed adopter or maintainer.
+
+## Start here
+
+If you want the clearest next steps as a contributor, use this order:
+
+1. Check open issues labeled `help wanted` for the most explicit maintainer asks.
+2. If you want to propose a reviewable improvement, open a `Pulse Suggestion`
+    issue. Pulse suggestions are identified by the `[Pulse]` title prefix and
+    route into the pulse automation workflow.
+3. Use Discussions for early design questions before opening a large PR.
+
+The open issue queue includes recurring automated check-in issues. For human
+work items, prefer `help wanted`, `good first issue`, and issues opened by a
+human maintainer over weekly automation reports.
+
+## Pull request process
+
+1. Fork the repo and create a feature branch from `main`
+2. Write tests for any new functionality
+3. Run the relevant local tests for the files you changed
+4. Run the local CI preflight when preparing a merge-ready branch:
+   `scripts/ci-local.sh required`
+5. (Optional) Run the full suite for security-critical changes:
+   `scripts/ci-local.sh full`
+6. **Sign off every commit** (see DCO below): `git commit -s`
+7. Open a PR with a clear description of the change
+
+For test tiers and file-specific test suggestions, see
+[Testing AIIR](docs/reference/testing.md).
+
+### Merge gates (all must pass before merge)
+
+PRs to `main` require **all four** status checks to pass:
+
+| Gate | Workflow | What it checks |
+|---|---|---|
+| `contribution-assessment` | Contribution Assessment | DCO sign-off presence, PR risk summary, and trusted-maintainer approval for external sensitive-path changes |
+| `ci-ok` | Tests | Full test matrix (Python 3.9–3.13), 100% coverage |
+| `quality-ok` | Quality | Type checking, markdown lint, hadolint, YAML, SPDX, spelling |
+| `security-ok` | Security | Gitleaks, Bandit, Semgrep, ruff, pip-audit, license check |
+
+The current `main` policy requires the four merge gates above. The
+`ai-gate` workflow is advisory-only and may surface Copilot findings for
+selected sensitive paths, but it is not a required merge gate.
+
+### Contribution assessment hardening
+
+The `contribution-assessment` gate runs on pull-request metadata only. It does
+not check out or execute PR code.
+
+- Human-authored PRs must have `Signed-off-by:` trailers on every commit.
+- External PRs that touch sensitive paths (`aiir/`, workflows, rulesets,
+  release surfaces, or dependency-management files) stay pending until a
+  trusted maintainer approval is recorded.
+- Every PR gets a sticky assessment comment summarizing trust level, changed
+    sensitive paths, DCO status, and the current CI gate snapshot.
+
+Bot-authored PRs skip the DCO trailer check so existing repository automation
+can continue to operate.
+
+> **Copilot code review** is enabled. It will automatically review your PR
+> against our [review instructions](.github/copilot-review-instructions.md).
+> Treat it as an extra reviewer, not the source of truth.
+
+### Dependabot PRs
+
+Minor/patch dependency updates are auto-approved and auto-merged after CI
+passes. Major version bumps require human review.
+
+### Release process
+
+Only repository admins can create releases:
+
+1. All CI must be GREEN on `main`
+2. Bump version in `aiir/__init__.py` (single source of truth)
+3. Run `python scripts/sync-version.py --fix` to propagate
+4. Commit, tag `vX.Y.Z`, push; the Publish workflow handles the rest
+5. PyPI and npm only publish **after** CI + verification pass
+
+### Local preflight
+
+Run `scripts/ci-local.sh` before pushing to catch CI failures locally:
+
+On Linux distributions that mark the system interpreter as externally managed
+(PEP 668), `scripts/ci-local.sh` will automatically bootstrap a temporary
+virtual environment before installing its pinned test requirements.
+
+On Windows, some hardening tests create real symlinks. If your shell does not
+have symlink privileges enabled, the required preflight may fail with
+`WinError 1314`. Enable Developer Mode or run from a shell with symlink
+creation rights before treating those failures as code regressions.
+
+| Profile | Command | What it runs |
+|---------|---------|-------------|
+| `required` | `scripts/ci-local.sh required` | pytest, fuzz, 100% coverage, version sync, package smoke |
+| `full` | `scripts/ci-local.sh full` | All of `required` + mypy, ruff, bandit, semgrep, pip-audit, licenses, SPDX |
+| `mutation` | `scripts/ci-local.sh mutation` | Mutation testing gate (mutmut) |
+| `all` | `scripts/ci-local.sh all` | All of the above |
+
+### Developer Certificate of Origin (DCO)
+
+All contributions must include a `Signed-off-by` line certifying the
+[Developer Certificate of Origin v1.1](https://developercertificate.org/):
+
+```text
+Signed-off-by: Your Name <your@email.com>
+```
+
+Add it automatically with `git commit -s`. This certifies that you have
+the right to submit the contribution under the project's Apache-2.0
+license, and that Invariant Systems, Inc. may continue to distribute it
+(including under additional license terms for enterprise offerings).
+
+PRs with unsigned commits will not be merged.
+
+### Commit messages
+
+Use clear, descriptive commit messages. Examples:
+
+- `fix: handle empty commit range gracefully`
+- `feat: add --format csv output option`
+- `test: add fuzz coverage for unicode filenames`
+
+## Code standards
+
+- **Zero runtime dependencies.** This is a hard rule. AIIR ships with nothing but the Python standard library.
+- **Test everything.** We maintain 100% coverage across unit, integration, security, and fuzz suites (see CI for current test count). 100% coverage enforced.
+- **Security-first.** All inputs are validated. All outputs are deterministic. See the [Threat Model](THREAT_MODEL.md).
+
+## Development setup
+
+AIIR requires Python 3.9+. Dev dependencies:
+
+```bash
+pip install -e ".[dev]"  # installs pytest, etc.
+```
+
+See [docs/reference/testing.md](docs/reference/testing.md) for focused-test loops,
+security-critical test maps, and pre-PR checks.
+
+## VS Code Extension Contributor Note
+
+If you are working on the VS Code extension under `extensions/vscode/`:
+
+- use the repo-root `Run and Debug` launch presets for source-level debugging
+- use the packaged deep-smoke tasks and runbook under `extensions/vscode/docs/release/` for release-truth validation
+
+Start with `extensions/vscode/docs/README.md` for the extension-specific doc map.
+
+## Trademarks
+
+"AIIR", "AI Integrity Receipts", and "Invariant Systems" are trademarks
+of Invariant Systems, Inc. See [TRADEMARK.md](TRADEMARK.md) for usage
+guidelines.
+
+## License
+
+By contributing, you agree that your contributions will be licensed under
+the [Apache License 2.0](LICENSE), and you certify your contribution
+under the [Developer Certificate of Origin v1.1](https://developercertificate.org/).

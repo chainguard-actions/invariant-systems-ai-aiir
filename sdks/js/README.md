@@ -1,0 +1,103 @@
+# @invariantsystems/aiir
+
+**AIIR receipt verification for JavaScript and TypeScript.** Zero dependencies, works in browsers and Node.js (≥18).
+
+Verify the cryptographic integrity of [AIIR commit receipts](https://github.com/invariant-systems-ai/aiir) in any JavaScript environment.
+
+## Install
+
+```bash
+npm install @invariantsystems/aiir
+```
+
+## Usage
+
+### Node.js
+
+```javascript
+const { verify } = require('@invariantsystems/aiir');
+
+const receipt = JSON.parse(fs.readFileSync('receipt.aiir.json', 'utf-8'));
+const result = await verify(receipt);
+
+if (result.valid) {
+  console.log('✅ Receipt verified');
+} else {
+  console.log('❌ Verification failed:', result.errors);
+}
+```
+
+### TypeScript
+
+```typescript
+import { verify, VerifyResult } from '@invariantsystems/aiir';
+
+const result: VerifyResult = await verify(receipt);
+```
+
+### Browser
+
+```html
+<script src="https://unpkg.com/@invariantsystems/aiir@1.6.0/aiir-verify.js"
+        integrity="sha384-REPLACE_WITH_REAL_SRI_HASH_BEFORE_PUBLISHING"
+        crossorigin="anonymous"></script>
+<script>
+  const result = await AIIR.verify(receiptObject);
+</script>
+```
+
+> **Note:** Replace the `integrity` attribute value with the real SRI hash generated from the published file.
+> You can compute it with: `openssl dgst -sha384 -binary aiir-verify.js | openssl base64 -A | sed 's/^/sha384-/'`
+
+Or as an ES module:
+
+```javascript
+import { verify } from '@invariantsystems/aiir';
+```
+
+## API
+
+### `verify(receipt: unknown): Promise<VerifyResult>`
+
+Verify an AIIR commit receipt per [SPEC.md §9](https://github.com/invariant-systems-ai/aiir/blob/main/SPEC.md).
+
+Returns `{ valid: boolean, errors: string[] }`.
+
+### `canonicalJson(obj: unknown): string`
+
+Produce canonical JSON encoding per SPEC.md §6 (sorted keys, no whitespace, ASCII-safe).
+
+### `sha256(str: string): Promise<string>`
+
+Compute SHA-256 of a UTF-8 string. Uses SubtleCrypto (browser/Node ≥18) with Node.js `crypto` fallback.
+
+### `constantTimeEqual(a: string, b: string): boolean`
+
+Constant-time string comparison to prevent timing side-channel attacks (SPEC.md §9.2).
+
+## What It Checks
+
+1. Receipt type is `aiir.commit_receipt`
+2. Schema starts with `aiir/`
+3. Version is valid SemVer
+4. `content_hash` matches SHA-256 of canonical core fields
+5. `receipt_id` matches the expected `g1-` prefix + hash prefix
+6. All comparisons use constant-time equality
+
+## Zero Dependencies
+
+This package has **zero runtime dependencies**. It uses the Web Crypto API (`SubtleCrypto`) for SHA-256, which is available in:
+
+- All modern browsers
+- Node.js ≥18
+- Deno
+- Bun
+- Cloudflare Workers
+
+## Specification
+
+The verification algorithm is defined in the [AIIR Commit Receipt Specification](https://github.com/invariant-systems-ai/aiir/blob/main/SPEC.md) (§9 Verification Procedure).
+
+## License
+
+Apache-2.0 — [Invariant Systems, Inc.](https://invariantsystems.io)

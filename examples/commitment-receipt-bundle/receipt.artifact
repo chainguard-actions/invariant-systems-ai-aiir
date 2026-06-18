@@ -1,0 +1,31 @@
+{
+  "type": "aiir.commitment_receipt",
+  "schema": "aiir/commitment_receipt.v1",
+  "version": "1.5.1",
+  "subject": {
+    "name": "nisq-zenodo-release-packet-digest",
+    "kind": "release_digest_binding"
+  },
+  "statement": {
+    "summary": "Direct digest binding for the published NISQ Zenodo tarball referenced by the post-study public sidecar packet."
+  },
+  "artifacts": [
+    {
+      "type": "digest",
+      "ref": "nisq-readiness-evidence-capsule-v2026.05.01-zenodo.tar.gz",
+      "digest": "sha256:e5511fbf5cafbe9fce809f9b9820d27027852430e4e8f1feee6bfaad2b219d67",
+      "role": "artifact"
+    }
+  ],
+  "provenance": {
+    "repository": "https://github.com/invariant-systems-ai/evidence-commitments.git",
+    "tool": "https://github.com/invariant-systems-ai/aiir@1.5.1",
+    "generator": "aiir.cli"
+  },
+  "receipt_id": "c1-d471841487c192f5eff89b8dd5ff79a2",
+  "content_hash": "sha256:d471841487c192f5eff89b8dd5ff79a20a161dbb7a60ed7ce6bbf24db552b56e",
+  "timestamp": "2026-05-02T11:19:54Z",
+  "extensions": {
+    "namespace": "02-nisq-readiness"
+  }
+}

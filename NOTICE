@@ -1,0 +1,16 @@
+AIIR — AI Integrity Receipts
+Copyright 2025-2026 Invariant Systems, Inc.
+
+Licensed under the Apache License, Version 2.0.
+See LICENSE for the full license text.
+
+"AIIR", "AI Integrity Receipts", and "Invariant Systems" are trademarks
+of Invariant Systems, Inc. See TRADEMARK.md for usage guidelines.
+
+This product includes a pure-Python Ed25519 implementation in
+aiir/_ed25519.py whose field arithmetic and point operations are derived
+from Daniel J. Bernstein's public-domain Ed25519 reference implementation
+(https://ed25519.cr.yp.to/), which is dedicated to the public domain.
+AIIR's additions (fail-closed verification, input validation, subgroup and
+identity-point checks) are Copyright 2025-2026 Invariant Systems, Inc. and
+licensed under Apache-2.0.

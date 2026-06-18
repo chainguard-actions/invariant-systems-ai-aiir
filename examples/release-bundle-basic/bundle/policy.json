@@ -1,0 +1,16 @@
+{
+  "allowed_authorship_classes": [
+    "human",
+    "ai_assisted",
+    "ai_generated",
+    "bot"
+  ],
+  "description": "Standard team — practical defaults",
+  "enforcement": "soft-fail",
+  "max_ai_percent": 80.0,
+  "max_unsigned_receipts": -1,
+  "preset": "balanced",
+  "require_provenance_repo": false,
+  "require_schema_valid": false,
+  "require_signing": false
+}

@@ -1,0 +1,318 @@
+{
+  "$schema": "https://invariantsystems.io/schemas/aiir/test_vectors.v1",
+  "description": "AIIR commit receipt v2 conformance test vectors. Each vector is a real deployed receipt from the AIIR dogfood ledger, verified byte-exact by the reference verifier (aiir._verify.verify_receipt). Conforming implementations MUST pass all vectors.",
+  "spec_version": "2.0.0",
+  "generated_by": "aiir reference implementation (deployed dogfood ledger, selected 2026-06-12)",
+  "generated_at": "2026-06-12T00:00:00Z",
+  "vectors": [
+    {
+      "id": "tv-v2-01-human-normal-commit",
+      "description": "Valid v2 receipt for a human-authored commit with no AI signals, one parent (normal commit), tree_sha and parent_shas present",
+      "receipt": {
+        "ai_attestation": {
+          "authorship_class": "human",
+          "bot_signal_count": 0,
+          "bot_signals_detected": [],
+          "detection_method": "heuristic_v2",
+          "is_ai_authored": false,
+          "is_bot_authored": false,
+          "signal_count": 0,
+          "signals_detected": []
+        },
+        "commit": {
+          "author": {
+            "date": "2026-03-12T07:56:21-04:00",
+            "email": "noah@invariantsystems.io",
+            "name": "Invariant Systems"
+          },
+          "committer": {
+            "date": "2026-03-12T07:56:21-04:00",
+            "email": "noah@invariantsystems.io",
+            "name": "Invariant Systems"
+          },
+          "diff_hash": "sha256:420c31fafd40cff6195e79d06a2822cdfa833a0472ccee247aab34c1cf69961e",
+          "files": [
+            "CONTRIBUTING.md"
+          ],
+          "files_changed": 1,
+          "message_hash": "sha256:6a2de5c8fe7edad7e86c019b3f4ae0df18e7970f0829c5378ad2314edaccd46b",
+          "parent_shas": [
+            "4b48a47357176be6553660cc14353c8e50b0edba"
+          ],
+          "sha": "eb762766586412bb3531241e83b367e7c0393d4b",
+          "subject": "docs: update stale test count 1680 \u2192 1893 in CONTRIBUTING.md",
+          "tree_sha": "21a08d5cc5f13b620983b4dba2ed4cf8f564c137"
+        },
+        "content_hash": "sha256:bdf9e8e36ff640fecba05eb0cc2a8edc7bcae5be51d28f327a3970c1bb5d07ff",
+        "extensions": {
+          "instance_id": "8ef04f9d-e894-4d16-82a2-8a1655ac6295"
+        },
+        "provenance": {
+          "generator": "aiir.cli",
+          "repository": "https://github.com/invariant-systems-ai/aiir.git",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.2.5"
+        },
+        "receipt_id": "g1-bdf9e8e36ff640fecba05eb0cc2a8edc",
+        "schema": "aiir/commit_receipt.v2",
+        "timestamp": "2026-03-12T12:13:52Z",
+        "type": "aiir.commit_receipt",
+        "version": "1.2.5"
+      },
+      "expected": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "tv-v2-02-human-merge-commit",
+      "description": "Valid v2 receipt for a human-authored merge commit with two parents in parent_shas, demonstrating DAG binding",
+      "receipt": {
+        "ai_attestation": {
+          "authorship_class": "human",
+          "bot_signal_count": 0,
+          "bot_signals_detected": [],
+          "detection_method": "heuristic_v2",
+          "is_ai_authored": false,
+          "is_bot_authored": false,
+          "signal_count": 0,
+          "signals_detected": []
+        },
+        "commit": {
+          "author": {
+            "date": "2026-03-12T06:14:42-04:00",
+            "email": "noah@invariantsystems.io",
+            "name": "Invariant Systems"
+          },
+          "committer": {
+            "date": "2026-03-12T06:14:42-04:00",
+            "email": "noah@invariantsystems.io",
+            "name": "Invariant Systems"
+          },
+          "diff_hash": "sha256:fcafeb01d71b3abd07b55187a426fa4903ebc3892ffbe6994a4dfde36f4e5dd6",
+          "files": [
+            "docs/drafts/show-hn.md"
+          ],
+          "files_changed": 1,
+          "message_hash": "sha256:8f9739bab6f384bf627346a44c1296d8949cb474b987539311e220d3a9b20fb5",
+          "parent_shas": [
+            "97280f6019139fc1e2fb23d3c7705d9ef76b965d",
+            "4fbe765ade8cf5f6273bdd5550df973f5c4d38bb"
+          ],
+          "sha": "465ac8b33e96c436bcbdebf41065b51d2ee87246",
+          "subject": "merge: reconcile launch-polish into stale-scores branch",
+          "tree_sha": "6afdcd5afa545320a7a886bd972f501c7a9c3700"
+        },
+        "content_hash": "sha256:735c70b6de58ff6dca25a9b5a3c33d3f6155d774079dd4cdb1e5b756eef20118",
+        "extensions": {
+          "instance_id": "8ef04f9d-e894-4d16-82a2-8a1655ac6295"
+        },
+        "provenance": {
+          "generator": "aiir.cli",
+          "repository": "https://github.com/invariant-systems-ai/aiir.git",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.2.5"
+        },
+        "receipt_id": "g1-735c70b6de58ff6dca25a9b5a3c33d3f",
+        "schema": "aiir/commit_receipt.v2",
+        "timestamp": "2026-03-12T12:13:52Z",
+        "type": "aiir.commit_receipt",
+        "version": "1.2.5"
+      },
+      "expected": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "tv-v2-03-ai-assisted",
+      "description": "Valid v2 receipt with is_ai_authored=true, authorship_class=ai_assisted, and multiple detected AI signals",
+      "receipt": {
+        "ai_attestation": {
+          "authorship_class": "ai_assisted",
+          "bot_signal_count": 0,
+          "bot_signals_detected": [],
+          "detection_method": "heuristic_v2",
+          "is_ai_authored": true,
+          "is_bot_authored": false,
+          "signal_count": 3,
+          "signals_detected": [
+            "message_match:lovable",
+            "message_match:supermaven",
+            "message_match:codestral"
+          ]
+        },
+        "commit": {
+          "author": {
+            "date": "2026-03-11T03:24:26-04:00",
+            "email": "noah@invariantsystems.io",
+            "name": "InvariantSystems"
+          },
+          "committer": {
+            "date": "2026-03-11T03:24:26-04:00",
+            "email": "noreply@github.com",
+            "name": "GitHub"
+          },
+          "diff_hash": "sha256:e34eea6fb6aa74597b220d26a2a040592fbf17544e45d880d9144d3501f6eafc",
+          "files": [
+            ".clusterfuzzlite/Dockerfile",
+            ".clusterfuzzlite/build.sh",
+            ".clusterfuzzlite/fuzz_receipt.py",
+            ".dockerignore",
+            ".github/requirements/README.md",
+            ".github/requirements/bandit.in",
+            ".github/requirements/bandit.txt",
+            ".github/requirements/build.in",
+            ".github/requirements/build.txt",
+            ".github/requirements/coverage.in",
+            ".github/requirements/coverage.txt",
+            ".github/requirements/cyclonedx.in",
+            ".github/requirements/cyclonedx.txt",
+            ".github/requirements/docker-base.in",
+            ".github/requirements/docker-base.txt",
+            ".github/requirements/fuzz.in",
+            ".github/requirements/fuzz.txt",
+            ".github/requirements/mutation.in",
+            ".github/requirements/mutation.txt",
+            ".github/requirements/pip-audit.in",
+            ".github/requirements/pip-audit.txt",
+            ".github/requirements/pip-licenses.in",
+            ".github/requirements/pip-licenses.txt",
+            ".github/requirements/ruff.in",
+            ".github/requirements/ruff.txt",
+            ".github/requirements/semgrep.in",
+            ".github/requirements/semgrep.txt",
+            ".github/requirements/sigstore.in",
+            ".github/requirements/sigstore.txt",
+            ".github/requirements/test.in",
+            ".github/requirements/test.txt",
+            ".github/requirements/typecheck.in",
+            ".github/requirements/typecheck.txt",
+            ".github/requirements/yamllint.in",
+            ".github/requirements/yamllint.txt",
+            ".github/workflows/action-health.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/clusterfuzzlite.yml",
+            ".github/workflows/mutation.yml",
+            ".github/workflows/publish.yml",
+            ".github/workflows/quality.yml",
+            ".github/workflows/security.yml",
+            ".github/workflows/sync.yml",
+            ".gitignore",
+            ".gitlab-ci.yml",
+            "Dockerfile",
+            "README.md",
+            "aiir.env",
+            "aiir/__init__.py",
+            "aiir/_canonical_cbor.py",
+            "aiir/_receipt.py",
+            "aiir/_verify.py",
+            "aiir/_verify_cbor.py",
+            "pyproject.toml",
+            "schemas/cbor_test_vectors.json",
+            "sdks/rust/Cargo.lock",
+            "sdks/rust/Cargo.toml",
+            "sdks/rust/src/lib.rs",
+            "sdks/rust/src/tests.rs",
+            "tests/conftest.py",
+            "tests/fuzz_atheris.py",
+            "tests/test_branch_close.py",
+            "tests/test_canonical_cbor.py",
+            "tests/test_cbor_conformance.py",
+            "tests/test_core.py",
+            "tests/test_fuzz.py",
+            "tests/test_properties.py",
+            "tests/test_verify.py"
+          ],
+          "files_changed": 68,
+          "message_hash": "sha256:5185a4d5cfce0229b1201d091540fd618a13548df89fcf140c36f4f176ae437a",
+          "parent_shas": [
+            "77a1419657202b121df2e37841cd384b8f0e421b"
+          ],
+          "sha": "3036f3caf52fde18e91e711e8153a27c2438aae9",
+          "subject": "chore: scorecard hardening + CBOR sidecar + ClusterFuzzLite + mutation testing",
+          "tree_sha": "3ed7c6ecf6fdc3810b72edcd0fb7d860ca7bf982"
+        },
+        "content_hash": "sha256:79d95a2414d257f39c4c48c3a6f1d06ab8b682eeb304fbef4fc4e9b57ce6ceab",
+        "extensions": {
+          "instance_id": "8ef04f9d-e894-4d16-82a2-8a1655ac6295"
+        },
+        "provenance": {
+          "generator": "aiir.cli",
+          "repository": "https://github.com/invariant-systems-ai/aiir.git",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.2.5"
+        },
+        "receipt_id": "g1-79d95a2414d257f39c4c48c3a6f1d06a",
+        "schema": "aiir/commit_receipt.v2",
+        "timestamp": "2026-03-12T12:13:53Z",
+        "type": "aiir.commit_receipt",
+        "version": "1.2.5"
+      },
+      "expected": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "tv-v2-04-bot-authored",
+      "description": "Valid v2 receipt for a bot-authored commit (is_bot_authored=true, authorship_class=bot)",
+      "receipt": {
+        "ai_attestation": {
+          "authorship_class": "bot",
+          "bot_signal_count": 2,
+          "bot_signals_detected": [
+            "author_name_bot:dependabot",
+            "author_email_bot:dependabot"
+          ],
+          "detection_method": "heuristic_v2",
+          "is_ai_authored": false,
+          "is_bot_authored": true,
+          "signal_count": 0,
+          "signals_detected": []
+        },
+        "commit": {
+          "author": {
+            "date": "2026-03-09T03:49:02-04:00",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]"
+          },
+          "committer": {
+            "date": "2026-03-09T03:49:02-04:00",
+            "email": "noreply@github.com",
+            "name": "GitHub"
+          },
+          "diff_hash": "sha256:9ebc714a1d07fb0e2499aa4d58900cc392391c96b2408e504a8b32bb132fc5da",
+          "files": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/publish.yml",
+            "action.yml"
+          ],
+          "files_changed": 3,
+          "message_hash": "sha256:720dbc2890e4b1865da7f77a1611f366c7790aa0112ed1f71c3d20a44880fc4b",
+          "parent_shas": [
+            "cdc1fcdae8813453f88927066ad33d63c8eff15d"
+          ],
+          "sha": "5739d8a5ee2229b5950da9cdd12577b057d69c3f",
+          "subject": "chore(deps): bump actions/setup-python from 5.3.0 to 6.2.0 (#8)",
+          "tree_sha": "567402cc30495274b9d7580c27b331780ed14600"
+        },
+        "content_hash": "sha256:204f988fe4d67d1c0eab1c5235b5f4fd1bfdad919d37e634e7f4f51611f61793",
+        "extensions": {
+          "instance_id": "8ef04f9d-e894-4d16-82a2-8a1655ac6295"
+        },
+        "provenance": {
+          "generator": "aiir.cli",
+          "repository": "https://github.com/invariant-systems-ai/aiir.git",
+          "tool": "https://github.com/invariant-systems-ai/aiir@1.2.5"
+        },
+        "receipt_id": "g1-204f988fe4d67d1c0eab1c5235b5f4fd",
+        "schema": "aiir/commit_receipt.v2",
+        "timestamp": "2026-03-12T12:13:54Z",
+        "type": "aiir.commit_receipt",
+        "version": "1.2.5"
+      },
+      "expected": {
+        "valid": true,
+        "errors": []
+      }
+    }
+  ]
+}

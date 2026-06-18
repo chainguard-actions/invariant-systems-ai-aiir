@@ -1,0 +1,535 @@
+{
+  "type": "aiir.commitment_receipt",
+  "schema": "aiir/commitment_receipt.v1",
+  "version": "1.5.1",
+  "subject": {
+    "name": "nisq-public-evidence-capsule-mirror",
+    "kind": "paper_public_capsule"
+  },
+  "statement": {
+    "summary": "Mirror of the full published NISQ public evidence capsule allowlist, verified against the shipped checksums.sha256 and intended for direct paper citation."
+  },
+  "artifacts": [
+    {
+      "type": "directory",
+      "ref": "capsule",
+      "digest": "sha256:c115f54b327d809e0fdd88405554f2e4eb381c373dbac145ff09411ad58a6da6",
+      "role": "artifact",
+      "entry_count": 84,
+      "file_count": 82,
+      "members": [
+        {
+          "path": "CITATION.cff",
+          "type": "file",
+          "digest": "sha256:e1359bdd78a71c92a2c6afe54b03a0b26bacb16b1c05f3fc03b8622c39fb1834",
+          "size": 958
+        },
+        {
+          "path": "CLAIMS_AND_NONCLAIMS.md",
+          "type": "file",
+          "digest": "sha256:352d206958b7505b982c6606103be93de1c2a96e43a236ff753b1dafbbada67c",
+          "size": 3533
+        },
+        {
+          "path": "LICENSE_RELEASE.md",
+          "type": "file",
+          "digest": "sha256:68d85131bc2af716df01c85ef19210e43956651cc5a0382fccb89d75bc0dfddd",
+          "size": 1106
+        },
+        {
+          "path": "MANIFEST.md",
+          "type": "file",
+          "digest": "sha256:4b2ed1672253ba96f3d4582711edddde03e4de9d0a84293196e064bbdfbed822",
+          "size": 2602
+        },
+        {
+          "path": "PUBLIC_ARCHIVE_FILESET.txt",
+          "type": "file",
+          "digest": "sha256:a6a4930faf4e82a925fcb2892eb067ee5b858882093f40701e591f6b66d3268f",
+          "size": 2233
+        },
+        {
+          "path": "PUBLIC_SUMMARY.md",
+          "type": "file",
+          "digest": "sha256:b4917635cd4419c1f30cc6dfff651a1ba4ad7af3a48f13a4fa7cb3dff779b0f5",
+          "size": 3073
+        },
+        {
+          "path": "README.md",
+          "type": "file",
+          "digest": "sha256:78a53c465be6743c2e78cf0e9421ac7c4c97a2a6412abde33f60f105b62d6b92",
+          "size": 6240
+        },
+        {
+          "path": "REPRODUCE.md",
+          "type": "file",
+          "digest": "sha256:8049beb354aa81577f95b9ea23ae63139b1f8b7440f6a03c9ef48880ae3440ad",
+          "size": 4485
+        },
+        {
+          "path": "SCOPE_RECONCILIATION.md",
+          "type": "file",
+          "digest": "sha256:db3a0b28d5b1b74857ea238bfe7dd1b479399f4cce1dae5afc6069220205d62a",
+          "size": 2047
+        },
+        {
+          "path": "STATISTICAL_SENSITIVITY.md",
+          "type": "file",
+          "digest": "sha256:c7a7c345aa0fda5e9e063ab61c4a2e9c6584d08516e83a2b5e5913e7d0e76515",
+          "size": 3613
+        },
+        {
+          "path": "anc",
+          "type": "directory"
+        },
+        {
+          "path": "anc/08_WORKLOAD_CORPUS_APPENDIX.md",
+          "type": "file",
+          "digest": "sha256:2d6dff9ec9e522849ec22208085a6e53c450255b77d0c29b8e6497a4c78b07cc",
+          "size": 1859
+        },
+        {
+          "path": "anc/09_ARXIV_ANCILLARY_MANIFEST_v1.json",
+          "type": "file",
+          "digest": "sha256:78a7484770322ddd95e617d9320b943b36267f5fca6f11a06937e41417dbe47e",
+          "size": 10796
+        },
+        {
+          "path": "anc/12_ARXIV_ANCILLARY_DATA_v1.json",
+          "type": "file",
+          "digest": "sha256:819c9a018acd8ff99495b210148fbefd001feffedd44755d9100467a7e073431",
+          "size": 46615
+        },
+        {
+          "path": "anc/15_ADDON_V1_1_WORKLOAD_CORPUS_APPENDIX.md",
+          "type": "file",
+          "digest": "sha256:a53a5334ada2e5e4d39551729536fdeb090f54c511147befc6eaefec293ccd77",
+          "size": 6655
+        },
+        {
+          "path": "anc/16_ARXIV_ANCILLARY_MANIFEST_v1_1.json",
+          "type": "file",
+          "digest": "sha256:6ceb9586ff255683df3cde351da38c989c7e15d2f3187affe687aee1dae067e7",
+          "size": 96557
+        },
+        {
+          "path": "anc/17_ARXIV_ANCILLARY_DATA_v1_1.json",
+          "type": "file",
+          "digest": "sha256:02628862a81acb406499b6e596c871465aee68d79092d16a50076f62e98d1962",
+          "size": 217203
+        },
+        {
+          "path": "anc/18_ADDON_V1_1_RESULTS_SUMMARY.json",
+          "type": "file",
+          "digest": "sha256:a45a1c22bd9e9f24d59c859268f8ec666739c55e4d6c2d044701e26ba02975fa",
+          "size": 9256
+        },
+        {
+          "path": "anc/18_ADDON_V1_1_RESULTS_SUMMARY.md",
+          "type": "file",
+          "digest": "sha256:c631665abfda232463cb5cb20c5cddfa0ec56536772457ce5e29a5652f1088dc",
+          "size": 3366
+        },
+        {
+          "path": "anc/20_ARXIV_ANCILLARY_MANIFEST_v1_1_S2.json",
+          "type": "file",
+          "digest": "sha256:a428d50fea363bef0c9fa5828b381874a8d8c87382f7db4a543f13e05fe89803",
+          "size": 24997
+        },
+        {
+          "path": "anc/21_ARXIV_ANCILLARY_DATA_v1_1_S2.json",
+          "type": "file",
+          "digest": "sha256:bb939d53008478c8549e7ad137b42c74fa0622d0da84ab271174936469cea968",
+          "size": 61091
+        },
+        {
+          "path": "anc/22_AWS_BRAKET_REAL_HARDWARE_CONFIRMATION_20260501.md",
+          "type": "file",
+          "digest": "sha256:31ce55b875dc25b31573352cdc079bfdd2e433f2f414e2a802f0782dcbffab50",
+          "size": 2924
+        },
+        {
+          "path": "anc/23_AWS_BRAKET_PROVIDER_FACTS_20260501.json",
+          "type": "file",
+          "digest": "sha256:b7e4891f0b1cf56f0dce7b5782f7311a7eb70e6d7833d4fa67a55ff51c11594d",
+          "size": 7239
+        },
+        {
+          "path": "anc/24_EXECUTION_ORDER_AND_TIMESTAMP_POSTURE_20260501.md",
+          "type": "file",
+          "digest": "sha256:1f1c95a54fc2a17ae1ad8b05bd3a1b777488657c62a83d793922d62428dc0363",
+          "size": 3303
+        },
+        {
+          "path": "anc/PREREGISTRATION_PUBLIC.json",
+          "type": "file",
+          "digest": "sha256:b4114a0ea524204bb08c36759a58c5b3448a06d7a21507a1b67c2d2e8a3ba870",
+          "size": 5820
+        },
+        {
+          "path": "anc/README.md",
+          "type": "file",
+          "digest": "sha256:a01cb1752c903ab7fc9c4ff9bd38938f89adf18ae1fa246ee8a945dfceb97e55",
+          "size": 5676
+        },
+        {
+          "path": "anc/bootstrap_ci.py",
+          "type": "file",
+          "digest": "sha256:1d04e8ed295193b7fc9d94699a958757c694f4d5764cf239002d82c539ef62db",
+          "size": 9768
+        },
+        {
+          "path": "anc/cross_backend_analysis.py",
+          "type": "file",
+          "digest": "sha256:dd96c6d5cc592203417784b74f503a4c5dc162a8355a3f9b8a55229144c29292",
+          "size": 42566
+        },
+        {
+          "path": "anc/generate_figures.py",
+          "type": "file",
+          "digest": "sha256:84b71e40daf0103ab9e9fc1840696480647947d43a1e7f49eb74ea43c6cffdbc",
+          "size": 12608
+        },
+        {
+          "path": "anc/noise_model_comparison.py",
+          "type": "file",
+          "digest": "sha256:dc099297853cddfceea4d7d59a9466e9ad7919e91de9f91fd0bf7ed6b983e201",
+          "size": 10774
+        },
+        {
+          "path": "anc/readout_mitigation.py",
+          "type": "file",
+          "digest": "sha256:c0303fbedb6b278d4c625690a87b30faf601cb008934cab41e7f7c92b234b804",
+          "size": 9791
+        },
+        {
+          "path": "anc/scaling_analysis.py",
+          "type": "file",
+          "digest": "sha256:2599d37fd34e9e2028094c9e639fd611d01a6eafeb0de019aebc2afe5c30bca2",
+          "size": 12691
+        },
+        {
+          "path": "anc/v11_ghz7.qasm",
+          "type": "file",
+          "digest": "sha256:a29a527d7442a709f342e4cb5a85f130b10b3c986efa203dd8bbd7ec099401bc",
+          "size": 166
+        },
+        {
+          "path": "anc/v11_grover2.qasm",
+          "type": "file",
+          "digest": "sha256:46784f16b5afbd72fc2a456ef356f0efd7d0ef089c9e90bbe8433cbb161df60b",
+          "size": 182
+        },
+        {
+          "path": "anc/v11_grover3.qasm",
+          "type": "file",
+          "digest": "sha256:c2b3293a7f1a0ea05f86305f8e1c41117e32ae901a846a6536f56692cda00fdc",
+          "size": 266
+        },
+        {
+          "path": "anc/v11_mirror1q_d1.qasm",
+          "type": "file",
+          "digest": "sha256:61eb4f36dad53e25c71f5ccf114a961f818784f7a94be92f852adf0fc23b2e70",
+          "size": 132
+        },
+        {
+          "path": "anc/v11_mirror1q_d16.qasm",
+          "type": "file",
+          "digest": "sha256:67acd0e767e658ac6cb1f83b1298c04f114fa5d9c0306f0d9fc0d22600d5cd91",
+          "size": 912
+        },
+        {
+          "path": "anc/v11_mirror1q_d2.qasm",
+          "type": "file",
+          "digest": "sha256:3bbb6869525a70d7748e9035e24daa93180157943f28794796ef8a98b35b18e0",
+          "size": 184
+        },
+        {
+          "path": "anc/v11_mirror1q_d4.qasm",
+          "type": "file",
+          "digest": "sha256:1923a5d4cba7010e857020c8d016047b0835d456e0609e37eb0f44ac66706e6b",
+          "size": 288
+        },
+        {
+          "path": "anc/v11_mirror1q_d8.qasm",
+          "type": "file",
+          "digest": "sha256:4d5a0c01b4f31348e3abbc3586d92943f844749f852dc5bd6b9690a63c2687d6",
+          "size": 496
+        },
+        {
+          "path": "anc/v11_qaoa_maxcut4.qasm",
+          "type": "file",
+          "digest": "sha256:afd7fd1d494f7760929aa51d93fdb9433e1724e5c3cecf40c7c09b800cc296be",
+          "size": 421
+        },
+        {
+          "path": "anc/v11_qft4.qasm",
+          "type": "file",
+          "digest": "sha256:5c46189f4e8ee3ba6ac61487d416a50f17f767d1286cbcd863326af83180e432",
+          "size": 264
+        },
+        {
+          "path": "anc/v11_qft5.qasm",
+          "type": "file",
+          "digest": "sha256:e96be77badf359e492cc36f52f31b5d834706dee6d013eb22b7a69d32b5392f3",
+          "size": 357
+        },
+        {
+          "path": "anc/v11_rand_w4_d16_s1337.qasm",
+          "type": "file",
+          "digest": "sha256:fc7086fa0e6e81b9b108d19e60a48813730f1243ccb1f919b456fe027560e9cf",
+          "size": 810
+        },
+        {
+          "path": "anc/v11_rand_w4_d16_s314159.qasm",
+          "type": "file",
+          "digest": "sha256:0381b7e27f3ff6022e79cd32220f793417f0d4185e547c6fa30edac734b48e38",
+          "size": 810
+        },
+        {
+          "path": "anc/v11_rand_w4_d16_s42.qasm",
+          "type": "file",
+          "digest": "sha256:284f8b885d67faf63d47099ba2de1f74f3560ec0c13f2e0758c2ebcea7543a8b",
+          "size": 810
+        },
+        {
+          "path": "anc/v11_rand_w4_d16_s7.qasm",
+          "type": "file",
+          "digest": "sha256:01c042df1258f98fd50065f68d7350dc5327c5bfd2c6a0dc2afd5de91f1d4ff9",
+          "size": 810
+        },
+        {
+          "path": "anc/v11_rand_w4_d8_s1337.qasm",
+          "type": "file",
+          "digest": "sha256:ea357da8636b647b4a4c5eec1363be1cbc9b7401def69886b0043f66eff37ad3",
+          "size": 442
+        },
+        {
+          "path": "anc/v11_rand_w4_d8_s314159.qasm",
+          "type": "file",
+          "digest": "sha256:fba228e74d804d39ee70767dfe6e06ce964298c6040e4266ff4a5abd12ea2deb",
+          "size": 442
+        },
+        {
+          "path": "anc/v11_rand_w4_d8_s42.qasm",
+          "type": "file",
+          "digest": "sha256:5875f8c7fa5335ac688441aa07a066d9ab96831353b085c83b1d211517abd0a1",
+          "size": 442
+        },
+        {
+          "path": "anc/v11_rand_w4_d8_s7.qasm",
+          "type": "file",
+          "digest": "sha256:cdc26b76646463016ed262aba7d58c628876dc8760de88d15e6c3607009f66da",
+          "size": 442
+        },
+        {
+          "path": "anc/v11_rand_w6_d16_s1337.qasm",
+          "type": "file",
+          "digest": "sha256:cfe8c2353efde3e7b6a52d0d866f67f9edc2e5fee5fd2d80d50148ab3dafdac6",
+          "size": 1066
+        },
+        {
+          "path": "anc/v11_rand_w6_d16_s314159.qasm",
+          "type": "file",
+          "digest": "sha256:9308880a113776697d1eb2b06d1775df8799670f2c50cdc085806d321294f3f0",
+          "size": 1066
+        },
+        {
+          "path": "anc/v11_rand_w6_d16_s42.qasm",
+          "type": "file",
+          "digest": "sha256:e36f96e5c2e0763662b1b9706fd018dd70985d1a3d7630045c04b654070b8b9c",
+          "size": 1066
+        },
+        {
+          "path": "anc/v11_rand_w6_d16_s7.qasm",
+          "type": "file",
+          "digest": "sha256:dfa1f848ad5012a14b26c344bffcb8e2b19d97c158c62ee857a5a1fe66be62c4",
+          "size": 1066
+        },
+        {
+          "path": "anc/v11_rand_w6_d8_s1337.qasm",
+          "type": "file",
+          "digest": "sha256:7e20a68bbdec09ee4e8b4fcadadaea1b90b72ca1fe6686909a0184cdde98c3a3",
+          "size": 570
+        },
+        {
+          "path": "anc/v11_rand_w6_d8_s314159.qasm",
+          "type": "file",
+          "digest": "sha256:9d980479f0d6d800d0b9256a46957cf2cbdba3d285b99d7f3bda65324c3186f4",
+          "size": 570
+        },
+        {
+          "path": "anc/v11_rand_w6_d8_s42.qasm",
+          "type": "file",
+          "digest": "sha256:7abe05f3e24951a153da45b20d227bf433fa0d42c9e8fc1cc0c9959ec278d2a3",
+          "size": 570
+        },
+        {
+          "path": "anc/v11_rand_w6_d8_s7.qasm",
+          "type": "file",
+          "digest": "sha256:893e5f1dde7171d80362463daa6a8f5ab6535e915fbdf1258967a8d95ca0d057",
+          "size": 570
+        },
+        {
+          "path": "anc/v11_vqe_h2.qasm",
+          "type": "file",
+          "digest": "sha256:603a9eff8483c7a384db7442a6121f68ae873f26fba793cc58064dc57f2ea4bd",
+          "size": 214
+        },
+        {
+          "path": "anc/v1_bell_2q.qasm",
+          "type": "file",
+          "digest": "sha256:2fb143875ed170f0535a9227c3f6bece9ac82278de05a5a9513aec75dc9ada33",
+          "size": 96
+        },
+        {
+          "path": "anc/v1_ghz_3q.qasm",
+          "type": "file",
+          "digest": "sha256:af9200346cd403c8b67db2a89b266117404b2a001a5c0fddea5d6ff656321a08",
+          "size": 110
+        },
+        {
+          "path": "anc/v1_ghz_5q.qasm",
+          "type": "file",
+          "digest": "sha256:283bcd9325f1c87bdc13015c04c9b74933544e0ceb279ec0aaf7fbfbf90d3c35",
+          "size": 138
+        },
+        {
+          "path": "anc/v1_mirror_1q.qasm",
+          "type": "file",
+          "digest": "sha256:61eb4f36dad53e25c71f5ccf114a961f818784f7a94be92f852adf0fc23b2e70",
+          "size": 132
+        },
+        {
+          "path": "anc/validate_ancillaries.py",
+          "type": "file",
+          "digest": "sha256:5ce64aa38801248c05b28021373ad287af03635e9f1e5dcfb5a71938d730154b",
+          "size": 8415
+        },
+        {
+          "path": "anc/verify_chsh.py",
+          "type": "file",
+          "digest": "sha256:6e63f0c5df3bc3d4c18ab054170626b9fd8cbc5fc76c721b457d6310ea84ae7b",
+          "size": 11585
+        },
+        {
+          "path": "checksums.sha256",
+          "type": "file",
+          "digest": "sha256:444bbb50a79343b4e796d7d98ffe66530b185b5f66e70e95b8ae9ed8004df1e2",
+          "size": 7562
+        },
+        {
+          "path": "fig1_chsh_backends.pdf",
+          "type": "file",
+          "digest": "sha256:9c104a37ff2e8bef2decba5830d8f9e390b201961961d4d4ea357578482ba342",
+          "size": 24378
+        },
+        {
+          "path": "fig2_mirror_depth_sweep.pdf",
+          "type": "file",
+          "digest": "sha256:4623b948233d47ee62759214f4a825cee28fd21b89df32f14e1cf752fc17c98f",
+          "size": 20124
+        },
+        {
+          "path": "fig3_v11_heatmap.pdf",
+          "type": "file",
+          "digest": "sha256:3231ee485d25c1cda3089fa5e74f3d2a03f566454b4fd2945f4a8fc806ab2eaa",
+          "size": 37237
+        },
+        {
+          "path": "fig4_noise_model.pdf",
+          "type": "file",
+          "digest": "sha256:deb357f30caa747fa5b456a32ed11ba913bdf1f060780322b4aa1a5da2422c88",
+          "size": 19691
+        },
+        {
+          "path": "fig5_cross_backend_corr.pdf",
+          "type": "file",
+          "digest": "sha256:9b7db7307bcfcc61689f01c50b28dd738a9320b0057b078b226851677c63282f",
+          "size": 20918
+        },
+        {
+          "path": "fig6_ghz_scaling.pdf",
+          "type": "file",
+          "digest": "sha256:8933df08ac295d92158a6f2252edd6ffdd60983c1e4b6303ef8cd6fc7b05ba6d",
+          "size": 24932
+        },
+        {
+          "path": "nisq_readiness.bbl",
+          "type": "file",
+          "digest": "sha256:ecc3ce2560dd4f544bae53867f8c285ff31478ab82501bb958be90fd2921b4fc",
+          "size": 24711
+        },
+        {
+          "path": "nisq_readiness.pdf",
+          "type": "file",
+          "digest": "sha256:534702f63d404e437d077d633a1eba7a8f0943e96a19e5d1a7980c3d964e745a",
+          "size": 579043
+        },
+        {
+          "path": "nisq_readiness.tex",
+          "type": "file",
+          "digest": "sha256:117cfa000dc066c6eb5c6db484e822a7fde4fdd504b0140e397aa6a12064459c",
+          "size": 70836
+        },
+        {
+          "path": "nisq_readinessNotes.bib",
+          "type": "file",
+          "digest": "sha256:61b9ca8a0eae79078bb6bcd4205c582b5f4f2ed0a16ece16a01837cc4718248d",
+          "size": 104
+        },
+        {
+          "path": "references.bib",
+          "type": "file",
+          "digest": "sha256:67da83a9b0390ec2c974f9fa304aff114dd3c256181c6a424bf85baa1f039c03",
+          "size": 9596
+        },
+        {
+          "path": "summary",
+          "type": "directory"
+        },
+        {
+          "path": "summary/bootstrap_ci.json",
+          "type": "file",
+          "digest": "sha256:83cf034706d2ce2ea562a83a0952d86c74a46c6cd753100eefaa5c49185ced2e",
+          "size": 12527
+        },
+        {
+          "path": "summary/cross_backend_analysis.json",
+          "type": "file",
+          "digest": "sha256:c995d6480b9933281cf3a82bd4655777360d5a60b909817f3c55d313e313e731",
+          "size": 32821
+        },
+        {
+          "path": "summary/noise_model_comparison.json",
+          "type": "file",
+          "digest": "sha256:e2d64b58ca2317b6812a58526e3676f349e49c63412f87db812f920d826c94ac",
+          "size": 2309
+        },
+        {
+          "path": "summary/readout_mitigation.json",
+          "type": "file",
+          "digest": "sha256:b22db683972085435ff58777876f6c325ed9c04ef0dd74c799a73982c0fb7f0f",
+          "size": 1843
+        },
+        {
+          "path": "summary/scaling_analysis.json",
+          "type": "file",
+          "digest": "sha256:9336076341fbe99393fc649dfec27c7711602084aadd36ef1c36a9200020a70d",
+          "size": 2377
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "repository": "https://github.com/invariant-systems-ai/evidence-commitments.git",
+    "tool": "https://github.com/invariant-systems-ai/aiir@1.5.1",
+    "generator": "aiir.cli"
+  },
+  "receipt_id": "c1-83519087f75ad9c1237fdf5c25592bf3",
+  "content_hash": "sha256:83519087f75ad9c1237fdf5c25592bf3ab4d389ee00fdac700ba05dbe47d3e4a",
+  "timestamp": "2026-05-02T11:38:49Z",
+  "extensions": {
+    "namespace": "02-nisq-readiness"
+  }
+}

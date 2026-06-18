@@ -1,0 +1,516 @@
+#!/usr/bin/env python3
+"""
+sync-version.py — Self-healing version synchronisation for AIIR.
+
+Copyright 2025-2026 Invariant Systems, Inc.
+SPDX-License-Identifier: Apache-2.0
+
+Reads the AIIR package source of truth (__version__ in aiir/__init__.py) and
+patches every file that embeds the package version string. It also rewrites
+the supported-version tables in the public security policies so the active
+series tracks the current release line. The VS Code extension carries an
+independent sidecar version and is intentionally excluded from this sync pass.
+Designed to be called
+from:
+
+  1. pre-commit (--check → exits 1 on drift, no writes)
+  2. CI         (--check → same)
+  3. release    (--fix   → patches in-place)
+  4. manually   (--fix   → patches in-place)
+
+Usage:
+  python scripts/sync-version.py --check            # dry-run (CI / pre-commit)
+  python scripts/sync-version.py --fix              # write patches (release)
+  python scripts/sync-version.py --fix --website-dir ../invariantsystems.io
+
+Zero dependencies — standard library only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+from typing import NamedTuple
+
+# ── Source of truth ──────────────────────────────────────────────────
+REPO_ROOT = Path(__file__).resolve().parent.parent
+INIT_PY = REPO_ROOT / "aiir" / "__init__.py"
+
+# ── Replacement rules ───────────────────────────────────────────────
+# Each rule is (relative_path, regex_pattern, replacement_template).
+# The regex MUST have a single named group `(?P<ver>...)` that captures
+# the old version string.  The replacement_template uses {version} for
+# the new version.
+
+
+class Rule(NamedTuple):
+    path: str
+    pattern: str
+    replacement: str
+
+
+SECURITY_POLICY_FILES = [
+    "SECURITY.md",
+    ".github/SECURITY.md",
+]
+
+
+# --- AIIR repo rules ------------------------------------------------
+AIIR_RULES: list[Rule] = [
+    # mcp-manifest.json  →  "version": "X.Y.Z"
+    Rule(
+        "mcp-manifest.json",
+        r'"version":\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        '"version": "{version}"',
+    ),
+    # CITATION.cff  →  version: X.Y.Z
+    Rule(
+        "CITATION.cff",
+        r"(?m)^version:\s*(?P<ver>\d+\.\d+\.\d+)",
+        "version: {version}",
+    ),
+    # THREAT_MODEL.md  →  **CLI version**: X.Y.Z
+    Rule(
+        "THREAT_MODEL.md",
+        r"\*\*CLI version\*\*:\s*(?P<ver>\d+\.\d+\.\d+)",
+        "**CLI version**: {version}",
+    ),
+    # SECURITY.md  →  python scripts/verify-pypi-provenance.py X.Y.Z
+    Rule(
+        "SECURITY.md",
+        r"python scripts/verify-pypi-provenance\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-pypi-provenance.py {version}",
+    ),
+    # docs/reference/api.md  →  **Version**: X.Y.Z
+    Rule(
+        "docs/reference/api.md",
+        r"\*\*Version\*\*:\s*(?P<ver>\d+\.\d+\.\d+)",
+        "**Version**: {version}",
+    ),
+    # docs/reference/release-health.md  →  **Current release**: vX.Y.Z
+    Rule(
+        "docs/reference/release-health.md",
+        r"\*\*Current release\*\*:\s*v(?P<ver>\d+\.\d+\.\d+)",
+        "**Current release**: v{version}",
+    ),
+    # docs/reference/release-health.md  →  published vX.Y.Z release.
+    Rule(
+        "docs/reference/release-health.md",
+        r"published v(?P<ver>\d+\.\d+\.\d+) release\.",
+        "published v{version} release.",
+    ),
+    # docs/reference/verify-independently.md  →  aiir-X.Y.Z-py3-none-any.whl
+    Rule(
+        "docs/reference/verify-independently.md",
+        r"aiir-(?P<ver>\d+\.\d+\.\d+)-py3-none-any\.whl",
+        "aiir-{version}-py3-none-any.whl",
+    ),
+    # docs/case-studies/aiir-self-dogfood.md  →  python scripts/verify-release-evidence.py X.Y.Z
+    Rule(
+        "docs/case-studies/aiir-self-dogfood.md",
+        r"python scripts/verify-release-evidence\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-release-evidence.py {version}",
+    ),
+    # docs/guides/guide-solo-developer.md  →  rev: vX.Y.Z
+    Rule(
+        "docs/guides/guide-solo-developer.md",
+        r"rev:\s*v(?P<ver>\d+\.\d+\.\d+)",
+        "rev: v{version}",
+    ),
+    # docs/guides/guide-security-team.md  →  python scripts/verify-release-evidence.py X.Y.Z
+    Rule(
+        "docs/guides/guide-security-team.md",
+        r"python scripts/verify-release-evidence\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-release-evidence.py {version}",
+    ),
+    # docs/guides/guide-security-team.md  →  aiir-X.Y.Z-py3-none-any.whl
+    Rule(
+        "docs/guides/guide-security-team.md",
+        r"aiir-(?P<ver>\d+\.\d+\.\d+)-py3-none-any\.whl",
+        "aiir-{version}-py3-none-any.whl",
+    ),
+    # docs/guides/guide-security-team.md  →  /integrity/aiir/X.Y.Z/aiir-X.Y.Z-py3-none-any.whl/provenance
+    Rule(
+        "docs/guides/guide-security-team.md",
+        r"integrity/aiir/(?P<ver>\d+\.\d+\.\d+)/aiir-\d+\.\d+\.\d+-py3-none-any\.whl/provenance",
+        "integrity/aiir/{version}/aiir-{version}-py3-none-any.whl/provenance",
+    ),
+    # SECURITY.md  →  python scripts/verify-pypi-provenance.py X.Y.Z
+    Rule(
+        "SECURITY.md",
+        r"python scripts/verify-pypi-provenance\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-pypi-provenance.py {version}",
+    ),
+    # SECURITY.md  →  /integrity/aiir/X.Y.Z/aiir-X.Y.Z-py3-none-any.whl/provenance
+    Rule(
+        "SECURITY.md",
+        r"integrity/aiir/(?P<ver>\d+\.\d+\.\d+)/aiir-\d+\.\d+\.\d+-py3-none-any\.whl/provenance",
+        "integrity/aiir/{version}/aiir-{version}-py3-none-any.whl/provenance",
+    ),
+    # README.md  →  rev: vX.Y.Z
+    Rule(
+        "docs/integrations/ci-platforms.md",
+        r"rev:\s*v(?P<ver>\d+\.\d+\.\d+)",
+        "rev: v{version}",
+    ),
+    # README.md  →  python scripts/verify-release-evidence.py X.Y.Z
+    Rule(
+        "README.md",
+        r"python scripts/verify-release-evidence\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-release-evidence.py {version}",
+    ),
+    # README.md  →  | `version` | string | `X.Y.Z`
+    Rule(
+        "docs/integrations/ci-platforms.md",
+        r"\| `version`\s*\| string\s*\| `(?P<ver>\d+\.\d+\.\d+)`",
+        "| `version` | string | `{version}`",
+    ),
+    # README.md  →  raw.githubusercontent.com/.../vX.Y.Z/templates/
+    Rule(
+        "docs/integrations/ci-platforms.md",
+        r"raw\.githubusercontent\.com/invariant-systems-ai/aiir/v(?P<ver>\d+\.\d+\.\d+)/templates/",
+        "raw.githubusercontent.com/invariant-systems-ai/aiir/v{version}/templates/",
+    ),
+    # README.md  →  ref: 'vX.Y.Z'
+    Rule(
+        "docs/integrations/ci-platforms.md",
+        r"ref:\s*'v(?P<ver>\d+\.\d+\.\d+)'",
+        "ref: 'v{version}'",
+    ),
+    # templates/receipt/template.yml  →  default: "X.Y.Z"
+    Rule(
+        "templates/receipt/template.yml",
+        r'default:\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        'default: "{version}"',
+    ),
+    # templates/gitlab-ci.yml  →  raw.githubusercontent.com/.../vX.Y.Z/
+    Rule(
+        "templates/gitlab-ci.yml",
+        r"raw\.githubusercontent\.com/invariant-systems-ai/aiir/v(?P<ver>\d+\.\d+\.\d+)/",
+        "raw.githubusercontent.com/invariant-systems-ai/aiir/v{version}/",
+    ),
+    # templates/gitlab-ci.yml  →  ref: 'vX.Y.Z'
+    Rule(
+        "templates/gitlab-ci.yml",
+        r"ref:\s*'v(?P<ver>\d+\.\d+\.\d+)'",
+        "ref: 'v{version}'",
+    ),
+    # templates/gitlab-ci.yml  →  AIIR_VERSION: "X.Y.Z"
+    Rule(
+        "templates/gitlab-ci.yml",
+        r'AIIR_VERSION:\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        'AIIR_VERSION: "{version}"',
+    ),
+    # sdks/js/package.json  →  "version": "X.Y.Z"
+    Rule(
+        "sdks/js/package.json",
+        r'"version":\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        '"version": "{version}"',
+    ),
+    # extensions/vscode/package.json is intentionally excluded.
+    # The VS Code extension is released on its own semver lane.
+    # contrib/launch-post-devto.md  →  rev: vX.Y.Z
+    Rule(
+        "contrib/launch-post-devto.md",
+        r"rev:\s*v(?P<ver>\d+\.\d+\.\d+)",
+        "rev: v{version}",
+    ),
+    # docs/demo.svg  →  Terminal — aiir vX.Y.Z
+    Rule(
+        "docs/demo.svg",
+        r"Terminal — aiir v(?P<ver>\d+\.\d+\.\d+)",
+        "Terminal — aiir v{version}",
+    ),
+    # docs/demo.svg  →  installed aiir-X.Y.Z
+    Rule(
+        "docs/demo.svg",
+        r"installed aiir-(?P<ver>\d+\.\d+\.\d+)",
+        "installed aiir-{version}",
+    ),
+    # examples/gitlab-demo/.gitlab-ci.yml  →  AIIR_VERSION: "X.Y.Z"
+    Rule(
+        "examples/gitlab-demo/.gitlab-ci.yml",
+        r'AIIR_VERSION:\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        'AIIR_VERSION: "{version}"',
+    ),
+    # examples/gitlab-demo/README.md  →  raw.githubusercontent.com/.../vX.Y.Z/
+    Rule(
+        "examples/gitlab-demo/README.md",
+        r"raw\.githubusercontent\.com/invariant-systems-ai/aiir/v(?P<ver>\d+\.\d+\.\d+)/",
+        "raw.githubusercontent.com/invariant-systems-ai/aiir/v{version}/",
+    ),
+    # examples/witness-quorum/VERIFY.md  →  aiir-X.Y.Z-py3-none-any.whl
+    Rule(
+        "examples/witness-quorum/VERIFY.md",
+        r"aiir-(?P<ver>\d+\.\d+\.\d+)-py3-none-any\.whl",
+        "aiir-{version}-py3-none-any.whl",
+    ),
+    # contrib/guac/README.md  →  https://github.com/invariant-systems-ai/aiir@X.Y.Z
+    Rule(
+        "contrib/guac/README.md",
+        r"https://github\.com/invariant-systems-ai/aiir@(?P<ver>\d+\.\d+\.\d+)",
+        "https://github.com/invariant-systems-ai/aiir@{version}",
+    ),
+    # scripts/verify-release-evidence.py  →  python scripts/verify-release-evidence.py X.Y.Z
+    Rule(
+        "scripts/verify-release-evidence.py",
+        r"python scripts/verify-release-evidence\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-release-evidence.py {version}",
+    ),
+    # docs/reference/release-health.md  →  **Current release**: vX.Y.Z
+    Rule(
+        "docs/reference/release-health.md",
+        r"\*\*Current release\*\*:\s*v(?P<ver>\d+\.\d+\.\d+)",
+        "**Current release**: v{version}",
+    ),
+    # docs/reference/release-health.md  →  published vX.Y.Z release
+    Rule(
+        "docs/reference/release-health.md",
+        r"published v(?P<ver>\d+\.\d+\.\d+) release",
+        "published v{version} release",
+    ),
+    # docs/case-studies/aiir-self-dogfood.md  →  python scripts/verify-release-evidence.py X.Y.Z
+    Rule(
+        "docs/case-studies/aiir-self-dogfood.md",
+        r"python scripts/verify-release-evidence\.py (?P<ver>\d+\.\d+\.\d+)",
+        "python scripts/verify-release-evidence.py {version}",
+    ),
+    # docs/reference/verify-independently.md  →  aiir-X.Y.Z-py3-none-any.whl
+    Rule(
+        "docs/reference/verify-independently.md",
+        r"aiir-(?P<ver>\d+\.\d+\.\d+)-py3-none-any\.whl",
+        "aiir-{version}-py3-none-any.whl",
+    ),
+]
+
+# --- Website repo rules (require --website-dir) ---------------------
+WEBSITE_RULES: list[Rule] = [
+    # stats.json  →  "version": "X.Y.Z"
+    Rule(
+        "stats.json",
+        r'"version":\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        '"version": "{version}"',
+    ),
+    # .well-known/mcp.json  →  "version": "X.Y.Z"
+    Rule(
+        ".well-known/mcp.json",
+        r'"version":\s*"(?P<ver>\d+\.\d+\.\d+)"',
+        '"version": "{version}"',
+    ),
+    # docs.html  →  <span data-aiir-version>X.Y.Z</span>
+    Rule(
+        "docs.html",
+        r"data-aiir-version>(?P<ver>\d+\.\d+\.\d+)</span>",
+        "data-aiir-version>{version}</span>",
+    ),
+    # index.html  →  class="version-code">vX.Y.Z</code>
+    Rule(
+        "index.html",
+        r'class="version-code">v(?P<ver>\d+\.\d+\.\d+)</code>',
+        'class="version-code">v{version}</code>',
+    ),
+]
+
+
+# ── Helpers ──────────────────────────────────────────────────────────
+
+
+def get_version() -> str:
+    """Read __version__ from aiir/__init__.py."""
+    text = INIT_PY.read_text(encoding="utf-8")
+    match = re.search(r'__version__\s*=\s*"(?P<ver>\d+\.\d+\.\d+)"', text)
+    if not match:
+        print(f"❌ Could not parse __version__ from {INIT_PY}", file=sys.stderr)
+        sys.exit(2)
+    return match.group("ver")
+
+
+def build_format_context(version: str) -> dict[str, str]:
+    """Values used by replacement templates."""
+    major_str, minor_str, _patch_str = version.split(".")
+    major = int(major_str)
+    minor = int(minor_str)
+    floor_minor = max(minor - 3, 0)
+    return {
+        "version": version,
+        "minor_series": f"{major}.{minor}.x",
+        "unsupported_before_floor": f"{major}.{floor_minor}.0",
+    }
+
+
+def render_supported_versions_table(version: str) -> str:
+    """Render the supported-version table for the current release line."""
+    major_str, minor_str, _patch_str = version.split(".")
+    major = int(major_str)
+    minor = int(minor_str)
+    floor_minor = max(minor - 3, 0)
+
+    lines = [
+        "| Version | Supported |",
+        "|---------|-----------|",
+        f"| {major}.{minor}.x   | ✅ Active (current) |",
+    ]
+    for prev_minor in range(minor - 1, floor_minor - 1, -1):
+        lines.append(f"| {major}.{prev_minor}.x   | ✅ Security fixes |")
+    lines.append(
+        f"| < {major}.{floor_minor}.0 | ❌ Unsupported — upgrade to {major}.{minor}.x |"
+    )
+    return "\n".join(lines)
+
+
+def sync_supported_version_tables(root: Path, version: str, *, fix: bool) -> list[str]:
+    """Check / fix the supported-version tables in the public security policies."""
+    drifts: list[str] = []
+    pattern = re.compile(
+        r"(?ms)(## Supported Versions\n\n)(?P<table>\| Version \| Supported \|\n\|---------\|-----------\|\n(?:\| .*?\|\n)+?)(?=\n## )"
+    )
+    expected = render_supported_versions_table(version)
+
+    for rel_path in SECURITY_POLICY_FILES:
+        fpath = root / rel_path
+        if not fpath.exists():
+            continue
+
+        text = fpath.read_text(encoding="utf-8")
+        match = pattern.search(text)
+        if not match:
+            drifts.append(
+                f"  ⚠️  {rel_path}: supported versions table not found (rule may be stale)"
+            )
+            continue
+
+        current = match.group("table").strip()
+        if current == expected:
+            continue
+
+        drifts.append(f"  ✗ {rel_path}: supported versions table out of sync")
+        if fix:
+            new_text = pattern.sub(rf"\1{expected}\n", text, count=1)
+            fpath.write_text(new_text, encoding="utf-8")
+
+    return drifts
+
+
+def apply_rules(
+    rules: list[Rule],
+    root: Path,
+    version: str,
+    *,
+    fix: bool,
+) -> list[str]:
+    """
+    Check / fix version references.
+
+    Returns a list of human-readable drift messages (empty = all in sync).
+    """
+    drifts: list[str] = []
+    format_context = build_format_context(version)
+
+    for rule in rules:
+        fpath = root / rule.path
+        if not fpath.exists():
+            # File may not exist in all checkouts (e.g. website dir not present).
+            continue
+
+        text = fpath.read_text(encoding="utf-8")
+        pattern = re.compile(rule.pattern)
+
+        matches = list(pattern.finditer(text))
+        if not matches:
+            drifts.append(f"  ⚠️  {rule.path}: pattern not found (rule may be stale)")
+            continue
+
+        stale = [m for m in matches if m.group("ver") != version]
+        if not stale:
+            continue
+
+        old_versions = {m.group("ver") for m in stale}
+        drifts.append(
+            f"  ✗ {rule.path}: found {', '.join(sorted(old_versions))} → want {version}"
+            f" ({len(stale)} occurrence{'s' if len(stale) != 1 else ''})"
+        )
+
+        if fix:
+            # Replace all occurrences of the pattern with the correct version.
+            replacement_template = rule.replacement
+            new_text = pattern.sub(
+                lambda m,
+                replacement_template=replacement_template: replacement_template.format(
+                    **format_context
+                ),
+                text,
+            )
+            fpath.write_text(new_text, encoding="utf-8")
+
+    return drifts
+
+
+# ── Main ─────────────────────────────────────────────────────────────
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Synchronise version strings across the AIIR repo.",
+    )
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument(
+        "--check",
+        action="store_true",
+        help="Dry-run: report drift and exit 1 if any found.",
+    )
+    mode.add_argument(
+        "--fix",
+        action="store_true",
+        help="Patch all files in-place to match __version__.",
+    )
+    parser.add_argument(
+        "--version",
+        default=None,
+        help="Override version (default: read from aiir/__init__.py).",
+    )
+    parser.add_argument(
+        "--website-dir",
+        default=None,
+        help="Path to invariantsystems.io checkout (optional).",
+    )
+    args = parser.parse_args()
+
+    version = args.version or get_version()
+    print(f"🔖 Source of truth: {version}")
+
+    all_drifts: list[str] = []
+
+    # AIIR repo
+    drifts = apply_rules(AIIR_RULES, REPO_ROOT, version, fix=args.fix)
+    all_drifts.extend(drifts)
+    all_drifts.extend(sync_supported_version_tables(REPO_ROOT, version, fix=args.fix))
+
+    # Website repo (optional)
+    if args.website_dir:
+        website_root = Path(args.website_dir).resolve()
+        if not website_root.exists():
+            print(f"⚠️  Website dir not found: {website_root}", file=sys.stderr)
+        else:
+            drifts = apply_rules(WEBSITE_RULES, website_root, version, fix=args.fix)
+            all_drifts.extend(drifts)
+
+    if all_drifts:
+        action = "Fixed" if args.fix else "Drift found"
+        print(f"\n{'🔧' if args.fix else '❌'} {action}:")
+        for line in all_drifts:
+            print(line)
+        if args.fix:
+            print(f"\n✅ All version references updated to {version}")
+            return 0
+        else:
+            print("\nRun `python scripts/sync-version.py --fix` to auto-correct.")
+            return 1
+    else:
+        print(f"✅ All version references are at {version}")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

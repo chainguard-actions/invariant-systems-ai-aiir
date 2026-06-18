@@ -1,0 +1,6 @@
+# markdownlint-cli2 configuration for AIIR project.
+# SPDX-License-Identifier: Apache-2.0
+
+ignores:
+  - "**/node_modules/**"
+  - "docs/ietf/draft-*.md"

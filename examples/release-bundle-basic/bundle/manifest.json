@@ -1,0 +1,89 @@
+{
+  "aiir_version": "1.6.0",
+  "artifacts": [
+    {
+      "path": "verify-release.json",
+      "role": "verify-release-result",
+      "sha256": "5e32ba2e0e0e1b3d29896109fb7596014c1f9f1db80b8c610fb492324d2fb119"
+    },
+    {
+      "path": "vsa.intoto.json",
+      "role": "verification-summary-attestation",
+      "sha256": "4752262dbd0360eb280860a559287d190b463664c929b99a51e521e73df21e92"
+    },
+    {
+      "path": "policy.json",
+      "role": "policy",
+      "sha256": "19dcfd7ae8e8591b5908ec3a28540f570eb623d153f932edad5a2ae797e4eee6"
+    },
+    {
+      "path": "evidence-stream.json",
+      "role": "evidence-stream",
+      "sha256": "81068357ffae7de340ada8a874625e0b279f1c07bd7b50173ff5b430fa5ba281"
+    },
+    {
+      "path": "evidence-summary.json",
+      "role": "evidence-summary",
+      "sha256": "bb96b94159e75e492a478f489138fa174aeef7b4ca0a8807a536a66d77215877"
+    },
+    {
+      "path": "receipts/0000-a10000000000.json",
+      "role": "receipt",
+      "sha256": "4245064abc69a03eb706c0afcebbd41afbbf4d589e7d4f5f408118df4f78a102"
+    },
+    {
+      "path": "receipts/0001-a20000000000.json",
+      "role": "receipt",
+      "sha256": "37785cd1134431c7c64b8d349772d6920f3876317ee3bafa011ca0c03a752308"
+    },
+    {
+      "path": "receipts/0002-a30000000000.json",
+      "role": "receipt",
+      "sha256": "9822445b4b884763185b4141d2f6292fb8cebeea3c9e2bbaff38fa1151781bee"
+    },
+    {
+      "path": "auditor-report.html",
+      "role": "auditor-report",
+      "sha256": "47cbef70177f309a06955b066a864924ea39cc8316c5ed5f2038725db48e0bd6"
+    },
+    {
+      "path": "verifier-instructions.md",
+      "role": "verifier-instructions",
+      "sha256": "d7423c96a29876328c3ef7424d18c7ee3ff5279f3fb5e72daf3879582734837e"
+    },
+    {
+      "path": "README.md",
+      "role": "readme",
+      "sha256": "eb371cf7af2c9ce0dd8b8b4fe2c1bf0b9589ad3e9e7cb89a239f4ff5dde7e237"
+    }
+  ],
+  "boundary": {
+    "build_provenance_replacement": false,
+    "declared_ai_provenance_only": true,
+    "hidden_ai_detection": false
+  },
+  "bundle_format_version": 1,
+  "created_at": "2026-06-06T19:03:01Z",
+  "policy": {
+    "digest": {
+      "sha256": "dd2860f1b2de5220fdaddf4cd12350041d28237f93238c90d53c3a05bd803830"
+    },
+    "path": "policy.json"
+  },
+  "redactions": {
+    "emails": false,
+    "files": false
+  },
+  "release": {
+    "commit_range": "",
+    "name": "HEAD",
+    "subject": "git+https://github.com/example/widget@v2.0.0"
+  },
+  "schema": "aiir/release_bundle.v1",
+  "verification": {
+    "reason": "All checks passed",
+    "result": "PASSED",
+    "verify_release_result_path": "verify-release.json",
+    "vsa_path": "vsa.intoto.json"
+  }
+}

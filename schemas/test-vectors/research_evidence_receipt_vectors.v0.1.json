@@ -1,0 +1,136 @@
+{
+  "$schema": "https://invariantsystems.io/schemas/aiir/research_evidence_receipt_vectors.v0.1.schema.json",
+  "description": "Conformance vectors for the AIIR research-evidence receipt profile (aiir/research_evidence_receipt.v0.1). Conforming implementations must produce byte-identical canonical JSON, content_hash, and record_id values for each input_core.",
+  "contract_version": "aiir/research_evidence_receipt.v0.1",
+  "canonical_json_rules": {
+    "sort_keys": true,
+    "separators": [
+      ",",
+      ":"
+    ],
+    "ensure_ascii": true,
+    "allow_nan": false,
+    "depth_limit": 64
+  },
+  "hash_algorithm": "SHA-256",
+  "record_id_format": "r1-{first_32_hex_of_content_hash}",
+  "generated_by": "manual-draft",
+  "generated_at": "2026-05-01T00:00:00Z",
+  "vectors": [
+    {
+      "id": "r-01-public-nisq",
+      "description": "Public-safe NISQ readiness claim with one evidence directory and one verifier path.",
+      "input_core": {
+        "contract_version": "aiir/research_evidence_receipt.v0.1",
+        "timestamp": "2026-04-30T00:00:00Z",
+        "subject": {
+          "kind": "research_claim",
+          "repo": "invariant-systems-research",
+          "program_id": "02-nisq-readiness",
+          "claim_id": "nisq-readiness-evidence-standard-2026-04-30",
+          "title": "Evidence-first NISQ readiness standard"
+        },
+        "claim": {
+          "status": "verified",
+          "summary": "Evidence-first NISQ readiness capsule with replayable IBM-backed analysis and portable adapter validation.",
+          "non_claims": [
+            "not quantum advantage",
+            "not fault tolerance",
+            "not multi-vendor universality"
+          ],
+          "last_reviewed": "2026-04-30"
+        },
+        "evidence": {
+          "artifacts": [
+            {
+              "type": "directory",
+              "ref": "3-proof/3d-evidence/quantum/02-nisq-readiness/",
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "role": "evidence"
+            }
+          ],
+          "verifiers": [
+            {
+              "type": "file",
+              "ref": "3-proof/3p-deliverable/publications/arxiv/02-nisq-readiness/anc/verify_chsh.py",
+              "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "role": "verifier"
+            }
+          ]
+        },
+        "governance": {
+          "public_safe": true,
+          "ip_sensitive": false,
+          "disclosure_tier": "public",
+          "next_gate": "Internal publication signoff and DOI deposit using the capsule release checklist."
+        },
+        "proof": {
+          "canonicalization": "aiir-canon-0"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"claim\":{\"last_reviewed\":\"2026-04-30\",\"non_claims\":[\"not quantum advantage\",\"not fault tolerance\",\"not multi-vendor universality\"],\"status\":\"verified\",\"summary\":\"Evidence-first NISQ readiness capsule with replayable IBM-backed analysis and portable adapter validation.\"},\"contract_version\":\"aiir/research_evidence_receipt.v0.1\",\"evidence\":{\"artifacts\":[{\"digest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"ref\":\"3-proof/3d-evidence/quantum/02-nisq-readiness/\",\"role\":\"evidence\",\"type\":\"directory\"}],\"verifiers\":[{\"digest\":\"sha256:2222222222222222222222222222222222222222222222222222222222222222\",\"ref\":\"3-proof/3p-deliverable/publications/arxiv/02-nisq-readiness/anc/verify_chsh.py\",\"role\":\"verifier\",\"type\":\"file\"}]},\"governance\":{\"disclosure_tier\":\"public\",\"ip_sensitive\":false,\"next_gate\":\"Internal publication signoff and DOI deposit using the capsule release checklist.\",\"public_safe\":true},\"proof\":{\"canonicalization\":\"aiir-canon-0\"},\"subject\":{\"claim_id\":\"nisq-readiness-evidence-standard-2026-04-30\",\"kind\":\"research_claim\",\"program_id\":\"02-nisq-readiness\",\"repo\":\"invariant-systems-research\",\"title\":\"Evidence-first NISQ readiness standard\"},\"timestamp\":\"2026-04-30T00:00:00Z\"}",
+        "canonical_json_sha256": "d086b895035685db48f5282eddaa28512f805056a5fe836df002b975b826d82e",
+        "content_hash": "sha256:d086b895035685db48f5282eddaa28512f805056a5fe836df002b975b826d82e",
+        "record_id": "r1-d086b895035685db48f5282eddaa2851"
+      }
+    },
+    {
+      "id": "r-02-restricted-mub6",
+      "description": "Restricted computational-evidence claim showing that non-public research lanes can be exported selectively.",
+      "input_core": {
+        "contract_version": "aiir/research_evidence_receipt.v0.1",
+        "timestamp": "2026-04-30T00:00:00Z",
+        "subject": {
+          "kind": "research_claim",
+          "repo": "invariant-systems-research",
+          "program_id": "03-mub6-hadamard-cube",
+          "claim_id": "mub6-hadamard-cube-defect-active-target-2026-04-30",
+          "title": "MUB(6) Hadamard-cube defect active proof target"
+        },
+        "claim": {
+          "status": "computational_evidence",
+          "summary": "Repo-local MUB(6) evidence defines an active proof target with defect and obstruction ladders.",
+          "non_claims": [
+            "not a publication-ready theorem statement without proof obligations discharged",
+            "not public-safe without internal review"
+          ],
+          "last_reviewed": "2026-04-30"
+        },
+        "evidence": {
+          "artifacts": [
+            {
+              "type": "file",
+              "ref": "3-proof/3d-evidence/mub6/theorem-ledger.json",
+              "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+              "role": "evidence"
+            }
+          ],
+          "verifiers": [
+            {
+              "type": "file",
+              "ref": "3-proof/3d-tests/mub6/test_mub6_foundations.py",
+              "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+              "role": "verifier"
+            }
+          ]
+        },
+        "governance": {
+          "public_safe": false,
+          "ip_sensitive": true,
+          "disclosure_tier": "restricted",
+          "next_gate": "Promote the Hadamard-cube defect identity into explicit lemmas, proof obligations, and independent verifier checks."
+        },
+        "proof": {
+          "canonicalization": "aiir-canon-0"
+        }
+      },
+      "expected": {
+        "canonical_json": "{\"claim\":{\"last_reviewed\":\"2026-04-30\",\"non_claims\":[\"not a publication-ready theorem statement without proof obligations discharged\",\"not public-safe without internal review\"],\"status\":\"computational_evidence\",\"summary\":\"Repo-local MUB(6) evidence defines an active proof target with defect and obstruction ladders.\"},\"contract_version\":\"aiir/research_evidence_receipt.v0.1\",\"evidence\":{\"artifacts\":[{\"digest\":\"sha256:3333333333333333333333333333333333333333333333333333333333333333\",\"ref\":\"3-proof/3d-evidence/mub6/theorem-ledger.json\",\"role\":\"evidence\",\"type\":\"file\"}],\"verifiers\":[{\"digest\":\"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\"ref\":\"3-proof/3d-tests/mub6/test_mub6_foundations.py\",\"role\":\"verifier\",\"type\":\"file\"}]},\"governance\":{\"disclosure_tier\":\"restricted\",\"ip_sensitive\":true,\"next_gate\":\"Promote the Hadamard-cube defect identity into explicit lemmas, proof obligations, and independent verifier checks.\",\"public_safe\":false},\"proof\":{\"canonicalization\":\"aiir-canon-0\"},\"subject\":{\"claim_id\":\"mub6-hadamard-cube-defect-active-target-2026-04-30\",\"kind\":\"research_claim\",\"program_id\":\"03-mub6-hadamard-cube\",\"repo\":\"invariant-systems-research\",\"title\":\"MUB(6) Hadamard-cube defect active proof target\"},\"timestamp\":\"2026-04-30T00:00:00Z\"}",
+        "canonical_json_sha256": "abdd442f7e491cd9b940ea87bc445c4d3626bce8a8d9d769db111dabb01c23a9",
+        "content_hash": "sha256:abdd442f7e491cd9b940ea87bc445c4d3626bce8a8d9d769db111dabb01c23a9",
+        "record_id": "r1-abdd442f7e491cd9b940ea87bc445c4d"
+      }
+    }
+  ]
+}

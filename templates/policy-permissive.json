@@ -1,0 +1,18 @@
+{
+    "$schema": "https://invariantsystems.io/schemas/aiir/policy.v1.schema.json",
+    "$comment": "AIIR policy preset: permissive — minimum friction for solo developers and experiments",
+    "description": "Solo developer / local-only — minimum friction",
+    "require_signing": false,
+    "max_ai_percent": 100.0,
+    "require_provenance_repo": false,
+    "max_unsigned_receipts": -1,
+    "require_schema_valid": false,
+    "enforcement": "warn",
+    "allowed_authorship_classes": [
+        "human",
+        "ai_assisted",
+        "ai_generated",
+        "bot",
+        "ai+bot"
+    ]
+}

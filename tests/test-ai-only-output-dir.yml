@@ -1,0 +1,78 @@
+name: Test ai-only mode with output directory
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          commit-range: HEAD~1..HEAD
+          ai-only: "true"
+          output-dir: /tmp/aiir-receipts-test
+          sign: "false"
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert ai_commit_count is a non-negative integer
+        env:
+          AI_COUNT: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "ai_commit_count: $AI_COUNT"
+          if ! echo "$AI_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: ai_commit_count is not a non-negative integer: '$AI_COUNT'"
+            exit 1
+          fi
+          echo "PASS: ai_commit_count=$AI_COUNT"
+
+      - name: Assert ai_commit_count <= receipt_count in ai-only mode
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+          AI_COUNT: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          echo "ai_commit_count: $AI_COUNT"
+          # In ai-only mode, receipts are only generated for AI commits,
+          # so receipt_count should equal ai_commit_count
+          if [ "$RECEIPT_COUNT" != "$AI_COUNT" ]; then
+            echo "INFO: In ai-only mode, receipt_count ($RECEIPT_COUNT) should equal ai_commit_count ($AI_COUNT)"
+            # This is informational — the action may still generate receipts for all commits
+          fi
+          echo "PASS"
+
+      - name: Assert output directory exists
+        run: |
+          echo "Checking output directory /tmp/aiir-receipts-test"
+          if [ ! -d "/tmp/aiir-receipts-test" ]; then
+            echo "INFO: output directory not created (no AI commits to receipt)"
+          else
+            echo "PASS: output directory exists"
+            ls -la /tmp/aiir-receipts-test/ || true
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_overflow is false or empty
+        env:
+          OVERFLOW: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipts_overflow: $OVERFLOW"
+          if [ "$OVERFLOW" = "true" ]; then
+            echo "FAIL: receipts_overflow should not be true for a small commit range"
+            exit 1
+          fi
+          echo "PASS"

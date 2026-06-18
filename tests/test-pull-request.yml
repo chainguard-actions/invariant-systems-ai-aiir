@@ -1,0 +1,65 @@
+name: Test pull request event simulation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/1/merge
+      GITHUB_HEAD_REF: feature-branch
+      GITHUB_BASE_REF: main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          # Provide explicit commit-range to avoid needing real PR SHAs
+          # (github.event.pull_request.base.sha / head.sha are empty in act)
+          commit-range: HEAD~1..HEAD
+          sign: "false"
+
+      - name: Assert receipt_count output is present and numeric
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert signed_receipt_count is 0 when sign is false
+        env:
+          SIGNED_COUNT: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $SIGNED_COUNT"
+          # When sign=false, no receipts should be signed
+          if [ -n "$SIGNED_COUNT" ] && [ "$SIGNED_COUNT" != "0" ]; then
+            echo "FAIL: expected signed_receipt_count=0 when sign=false, got '$SIGNED_COUNT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert receipts_json output is set
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+          OVERFLOW: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipts_overflow: $OVERFLOW"
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          # receipts_json should be a JSON array or OVERFLOW sentinel
+          if [ "$OVERFLOW" = "true" ]; then
+            if [ "$RECEIPTS_JSON" != "OVERFLOW" ]; then
+              echo "FAIL: when receipts_overflow=true, receipts_json should be 'OVERFLOW'"
+              exit 1
+            fi
+          elif [ -n "$RECEIPTS_JSON" ]; then
+            echo "$RECEIPTS_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); assert isinstance(data, list), 'expected JSON array'" || {
+              echo "FAIL: receipts_json is not a valid JSON array"
+              exit 1
+            }
+          fi
+          echo "PASS"

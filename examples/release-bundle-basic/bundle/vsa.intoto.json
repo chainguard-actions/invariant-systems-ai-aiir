@@ -1,0 +1,58 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "constraints": {
+      "allowedAuthorshipClasses": [
+        "human",
+        "ai_assisted",
+        "ai_generated",
+        "bot"
+      ],
+      "maxAiPercent": 80.0
+    },
+    "coverage": {
+      "commitRange": "",
+      "commitsTotal": 3,
+      "coveragePercent": 100.0,
+      "receiptsFound": 3,
+      "receiptsMissing": 0
+    },
+    "evaluation": {
+      "invalidReceipts": 0,
+      "policyViolations": 0,
+      "totalReceipts": 3,
+      "validReceipts": 3
+    },
+    "inputAttestations": [
+      {
+        "digest": {
+          "sha256": "7d5dd7d0fe4e120b7bfe800e136164c3a1aa9ea2ec718eae9f0d0614b161b36f"
+        },
+        "uri": "receipts.jsonl"
+      }
+    ],
+    "policy": {
+      "digest": {
+        "sha256": "dd2860f1b2de5220fdaddf4cd12350041d28237f93238c90d53c3a05bd803830"
+      },
+      "uri": "aiir://presets/balanced"
+    },
+    "timeVerified": "2026-06-06T19:03:01Z",
+    "verificationResult": "PASSED",
+    "verifier": {
+      "id": "https://invariantsystems.io/verifiers/aiir",
+      "version": {
+        "aiir": "1.6.0"
+      }
+    }
+  },
+  "predicateType": "https://invariantsystems.io/predicates/aiir/verification_summary/v1",
+  "subject": [
+    {
+      "digest": {
+        "gitCommit": "v2.0.0"
+      },
+      "name": "git+https://github.com/example/widget@v2.0.0"
+    }
+  ]
+}
