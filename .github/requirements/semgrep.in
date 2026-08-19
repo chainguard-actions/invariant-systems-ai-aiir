@@ -1,0 +1,2 @@
+semgrep
+requests>=2.33.0

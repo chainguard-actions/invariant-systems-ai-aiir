@@ -1,0 +1,47 @@
+name: PEP 740 Preflight Rehearsal
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pep740-preflight:
+    name: PEP-740 Preflight (${{ matrix.event }} | ${{ matrix.source }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        event: [push, pull_request]
+        source: [pypi, gh-release]
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install cosign verifier
+        run: bash scripts/install-cosign.sh
+
+      - name: Run preflight rehearsal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MATRIX_SOURCE: ${{ matrix.source }}
+          MATRIX_EVENT: ${{ matrix.event }}
+        run: |
+          python -P scripts/pep740_preflight_rehearsal.py \
+            --source "$MATRIX_SOURCE" \
+            --event "$MATRIX_EVENT" \
+            --package aiir \
+            --repo invariant-systems-ai/aiir \
+            --out-dir "pep740-preflight/${MATRIX_EVENT}-${MATRIX_SOURCE}"
+
+      - name: Upload machine-readable logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: pep740-preflight-${{ matrix.event }}-${{ matrix.source }}
+          path: pep740-preflight/${{ matrix.event }}-${{ matrix.source }}/

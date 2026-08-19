@@ -1,0 +1,91 @@
+name: Test custom commit-range input
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Determine a valid commit range
+        id: range
+        run: |
+          # Use the last 2 commits if available, otherwise just HEAD
+          COUNT=$(git rev-list --count HEAD)
+          echo "Total commits: $COUNT"
+          if [ "$COUNT" -ge 2 ]; then
+            RANGE="HEAD~1..HEAD"
+          else
+            # Single commit repo: use empty tree to HEAD
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          fi
+          echo "Using range: $RANGE"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: ${{ steps.range.outputs.range }}
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert at least one receipt was generated for the range
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if [ "$RECEIPT_COUNT" -lt 1 ]; then
+            echo "FAIL: expected at least 1 receipt for the commit range, got $RECEIPT_COUNT"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT >= 1"
+
+      - name: Assert receipts_json is a valid JSON array
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          if [ -z "$RECEIPTS_JSON" ]; then
+            echo "FAIL: receipts_json is empty"
+            exit 1
+          fi
+          if [ "$RECEIPTS_JSON" = "OVERFLOW" ]; then
+            echo "PASS: receipts_json is OVERFLOW (too large)"
+            exit 0
+          fi
+          TMPFILE=$(mktemp)
+          printf '%s' "$RECEIPTS_JSON" > "$TMPFILE"
+          python3 -c "import json,sys; d=json.loads(open(sys.argv[1]).read()); assert isinstance(d,list), 'not a list'; print('PASS: valid JSON array with '+str(len(d))+' items')" "$TMPFILE"
+          rm -f "$TMPFILE"
+
+      - name: Assert unsigned_receipt_count equals receipt_count (signing disabled)
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+          UNSIGNED: ${{ steps.action.outputs.unsigned_receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          echo "unsigned_receipt_count: $UNSIGNED"
+          if [ "$UNSIGNED" != "$RECEIPT_COUNT" ]; then
+            echo "FAIL: expected unsigned_receipt_count=$RECEIPT_COUNT, got '$UNSIGNED'"
+            exit 1
+          fi
+          echo "PASS"

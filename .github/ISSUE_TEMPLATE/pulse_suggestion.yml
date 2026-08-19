@@ -1,0 +1,43 @@
+name: Pulse Suggestion
+description: Propose a high-impact improvement that can be stress-tested and shipped via reviewable PR.
+title: "[Pulse] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user or maintainer pain does this suggestion solve?
+      placeholder: Describe the current pain and why it matters.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+      description: Describe the change in specific terms.
+      placeholder: "What should be built/changed?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: stress-tests
+    attributes:
+      label: Stress-test expectations
+      description: Define edge cases, adversarial cases, and non-regression checks.
+      placeholder: |
+        - Edge cases:
+        - Adversarial scenarios:
+        - Performance/scale checks:
+    validations:
+      required: true
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: Objective acceptance criteria used during review.
+      placeholder: "How do we know this is a full-force improvement?"
+    validations:
+      required: true

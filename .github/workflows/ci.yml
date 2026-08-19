@@ -1,0 +1,277 @@
+# CI test gate — runs the full test suite on every push and PR.
+# Full matrix covering every declared classifier version.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']   # Also run on version tags so publish ci-gate finds check-runs
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 15
+    # Full Python-version matrix on Linux; latest-only on Windows/macOS
+    # to verify cross-OS without burning 15 runner-minutes.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install --require-hashes --no-deps -r .github/requirements/test.txt
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -v --tb=short --ignore=tests/test_fuzz.py
+
+  # Property-based fuzz tests (Hypothesis).  Pure-Python logic with zero
+  # platform-specific behaviour, so a single Ubuntu run is sufficient.
+  # Generates ~53 k random/adversarial inputs across 52 test functions.
+  fuzz:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install --require-hashes --no-deps -r .github/requirements/fuzz.txt
+
+      - name: Run fuzz tests
+        run: python -m pytest tests/test_fuzz.py -v --tb=short
+
+  # Validate all GitHub Actions workflow YAML files.  Catches syntax
+  # errors, unknown action inputs, expression typos, etc. before they
+  # fail at runtime.  Runs in ~5 s.
+  lint:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.7"
+          ACTIONLINT_CHECKSUM: "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+        run: |
+          curl -sSfL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o /tmp/actionlint.tar.gz
+          echo "${ACTIONLINT_CHECKSUM}  /tmp/actionlint.tar.gz" | sha256sum -c
+          tar xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint
+          actionlint --version
+
+      - name: Lint workflows
+        # Disable shellcheck integration: it raises false positives on
+        # ${{ }} expressions (expanded by Actions before the shell sees them).
+        run: actionlint -shellcheck="" -color
+
+  # Coverage gate — prevents silent test coverage regressions.
+  # Runs the unit tests (no fuzz) with coverage and fails if the
+  # overall line coverage drops below the threshold.
+  coverage:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --require-hashes --no-deps -r .github/requirements/coverage.txt
+
+      - name: Run tests with coverage
+        run: |
+          coverage run --source=aiir -m pytest tests/ --ignore=tests/test_fuzz.py -q --tb=short
+          coverage report --show-missing
+          coverage report --fail-under=100
+
+  # Version drift check — ensures every file that embeds the version
+  # string matches __version__ in aiir/__init__.py.  Runs in ~2 s.
+  # Catches drift when pre-commit hooks are bypassed (--no-verify).
+  version-check:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Check version consistency
+        run: python scripts/sync-version.py --check
+
+  # Smoke test: install the wheel and verify entry points + packaging.
+  # Catches regressions that source-tree pytest misses (missing py.typed,
+  # broken entry_points, bad MANIFEST, etc.).
+  package:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Build and install wheel
+        run: pip install .
+
+      - name: Smoke test — CLI entry points
+        run: |
+          aiir --version
+          aiir-mcp-server --version
+
+      - name: Smoke test — receipt in a git repo
+        shell: bash
+        run: |
+          TMPDIR=$(python -c "import tempfile; print(tempfile.mkdtemp())")
+          cd "$TMPDIR"
+          git init && git config user.email ci@test && git config user.name CI
+          echo hello > file.txt && git add . && git commit -m "init"
+          aiir --pretty
+          python -c "import pathlib, sys; sys.exit(0 if pathlib.Path('.aiir/receipts.jsonl').exists() else 1)" || { echo 'FAIL: ledger not created'; exit 1; }
+          python -c "import pathlib, sys; sys.exit(0 if pathlib.Path('.aiir/index.json').exists() else 1)" || { echo 'FAIL: index not created'; exit 1; }
+          aiir -o .receipts/
+          aiir --verify .receipts/*.json
+
+      - name: Verify py.typed marker
+        run: python -c "from pathlib import Path; import aiir; p = Path(aiir.__file__).parent / 'py.typed'; assert p.exists(), f'py.typed missing at {p}'"
+
+  # SDK parity tests — run on every PR so SDK divergence is caught early.
+  sdk-js:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+      - name: Run JS SDK encoder vector tests
+        working-directory: sdks/js
+        run: node test_encoder_vectors.mjs
+
+  sdk-rust:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Cache Rust build artifacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            sdks/rust/target
+          key: rust-sdk-${{ hashFiles('sdks/rust/Cargo.lock') }}
+          restore-keys: rust-sdk-
+      - name: Run Rust SDK tests
+        working-directory: sdks/rust
+        run: cargo test
+
+  sdk-vscode:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "22"
+      - name: Install VS Code extension dependencies
+        working-directory: extensions/vscode
+        run: npm ci
+      - name: Compile and test VS Code extension
+        working-directory: extensions/vscode
+        run: |
+          npm run compile
+          npm test
+
+  # ── Summary gate — single required check for branch protection ────
+  # Depends on every matrix job + fuzz + package.  Adds zero wall-clock
+  # time because it only runs after the slowest parallel job finishes,
+  # and the job itself is a no-op (~2 s).
+  #
+  # Branch protection requires: ci-ok
+  ci-ok:
+    if: always()
+    needs: [test, fuzz, lint, coverage, package, version-check, sdk-js, sdk-rust, sdk-vscode]
+    timeout-minutes: 2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs passed
+        env:
+          RESULT_TEST: ${{ needs.test.result }}
+          RESULT_FUZZ: ${{ needs.fuzz.result }}
+          RESULT_LINT: ${{ needs.lint.result }}
+          RESULT_COVERAGE: ${{ needs.coverage.result }}
+          RESULT_PACKAGE: ${{ needs.package.result }}
+          RESULT_VERSION_CHECK: ${{ needs.version-check.result }}
+          RESULT_SDK_JS: ${{ needs.sdk-js.result }}
+          RESULT_SDK_RUST: ${{ needs.sdk-rust.result }}
+          RESULT_SDK_VSCODE: ${{ needs.sdk-vscode.result }}
+        run: |
+          # Fail if ANY needed job was not successful.
+          # "result" is one of: success, failure, cancelled, skipped.
+          echo "test:          $RESULT_TEST"
+          echo "fuzz:          $RESULT_FUZZ"
+          echo "lint:          $RESULT_LINT"
+          echo "coverage:      $RESULT_COVERAGE"
+          echo "package:       $RESULT_PACKAGE"
+          echo "version-check: $RESULT_VERSION_CHECK"
+          echo "sdk-js:        $RESULT_SDK_JS"
+          echo "sdk-rust:      $RESULT_SDK_RUST"
+          echo "sdk-vscode:    $RESULT_SDK_VSCODE"
+          if [[ "$RESULT_TEST" != "success" || \
+                "$RESULT_FUZZ" != "success" || \
+                "$RESULT_LINT" != "success" || \
+                "$RESULT_COVERAGE" != "success" || \
+                "$RESULT_PACKAGE" != "success" || \
+                "$RESULT_VERSION_CHECK" != "success" || \
+                "$RESULT_SDK_JS" != "success" || \
+                "$RESULT_SDK_RUST" != "success" || \
+                "$RESULT_SDK_VSCODE" != "success" ]]; then
+            echo "::error::CI gate failed — one or more jobs did not succeed"
+            exit 1
+          fi
+          echo "All CI jobs passed"

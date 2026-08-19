@@ -1,0 +1,208 @@
+name: Release Smoke Test
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to smoke-test (e.g. X.Y.Z). Required for workflow_dispatch runs.'
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    name: Release smoke
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.9', '3.13']
+
+    steps:
+      - name: Resolve target version
+        id: ver
+        shell: bash
+        env:
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ -n "$RELEASE_TAG_NAME" ]]; then
+            VER="$RELEASE_TAG_NAME"
+            VER="${VER#v}"          # strip leading v
+          elif [[ -n "$INPUT_VERSION" ]]; then
+            VER="$INPUT_VERSION"
+            VER="${VER#v}"
+          else
+            echo "❌ For workflow_dispatch, provide the 'version' input (e.g. X.Y.Z)."
+            exit 1
+          fi
+          safe_ver=$(printf '%s' "$VER" | tr -d '\n\r')
+          echo "version=$safe_ver" >> "$GITHUB_OUTPUT"
+          echo "Smoke-testing aiir==${safe_ver}"
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Wait for PyPI to have the version (max 5 min)
+        shell: bash
+        env:
+          TARGET: ${{ steps.ver.outputs.version }}
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" "https://pypi.org/pypi/aiir/${TARGET}/json")
+            if [[ "$STATUS" == "200" ]]; then
+              echo "✅ PyPI has aiir==${TARGET}"
+              break
+            fi
+            echo "⏳ Attempt ${i}/30 — PyPI not ready yet (HTTP ${STATUS}). Waiting 10s..."
+            sleep 10
+            if [[ $i -eq 30 ]]; then
+              echo "❌ Timed out waiting for PyPI"
+              exit 1
+            fi
+          done
+
+      - name: Install aiir from PyPI
+        shell: bash
+        env:
+          TARGET: ${{ steps.ver.outputs.version }}
+        run: |
+          python3 - "$TARGET" <<'PY'
+          import json
+          import sys
+          import urllib.request
+
+          version = sys.argv[1]
+          data = json.load(urllib.request.urlopen(f"https://pypi.org/pypi/aiir/{version}/json"))
+          hashes = [f"--hash=sha256:{f['digests']['sha256']}" for f in data.get("urls", [])]
+          if not hashes:
+              raise SystemExit("No distribution hashes found on PyPI")
+          with open("/tmp/aiir-install.requirements.txt", "w", encoding="utf-8") as out:
+              out.write(f"aiir=={version} {' '.join(hashes)}\n")
+          PY
+          pip install --require-hashes --no-deps -r /tmp/aiir-install.requirements.txt
+
+      - name: "Check: version string matches"
+        shell: bash
+        env:
+          TARGET: ${{ steps.ver.outputs.version }}
+        run: |
+          INSTALLED=$(aiir --version 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -1)
+          echo "Installed: ${INSTALLED}, Expected: ${TARGET}"
+          if [[ "${INSTALLED}" != "${TARGET}" ]]; then
+            echo "❌ Version mismatch"
+            exit 1
+          fi
+          echo "✅ Version matches"
+
+      - name: Set up a minimal test git repository
+        shell: bash
+        run: |
+          git config --global user.email "smoke@aiir.test"
+          git config --global user.name "AIIR Smoke"
+          mkdir smoke-repo && cd smoke-repo
+          git init
+          echo "hello" > hello.txt
+          git add hello.txt
+          git commit -m "feat: hello world
+
+          Co-authored-by: Copilot <copilot@github.com>"
+
+      - name: "Check: receipt generation"
+        shell: bash
+        working-directory: smoke-repo
+        run: |
+          aiir --pretty > /tmp/receipt_out.txt 2>&1
+          cat /tmp/receipt_out.txt
+          if ! grep -q "receipt_id\|Receipt:" /tmp/receipt_out.txt; then
+            echo "❌ Receipt generation produced no receipt_id"
+            exit 1
+          fi
+          echo "✅ Receipt generated"
+
+      - name: "Check: JSONL ledger and verify"
+        shell: bash
+        working-directory: smoke-repo
+        run: |
+          aiir --output .aiir/
+          aiir --verify .aiir/receipts.jsonl > /tmp/verify_out.txt 2>&1
+          cat /tmp/verify_out.txt
+          if grep -qi "TAMPERED\|ERROR\|fail" /tmp/verify_out.txt; then
+            echo "❌ Verify reported an error"
+            exit 1
+          fi
+          echo "✅ Verify passed"
+
+      - name: "Check: CBOR round-trip hash consistency"
+        shell: bash
+        working-directory: smoke-repo
+        run: |
+          python3 - <<'EOF'
+          import json, subprocess, sys
+
+          # Get JSON receipt
+          result = subprocess.run(["aiir", "--format", "json"], capture_output=True, text=True)
+          if result.returncode != 0:
+            print("aiir json output:", result.stdout, result.stderr)
+            sys.exit(1)
+          receipt = json.loads(result.stdout)
+          json_hash = receipt.get("content_hash", "")
+          json_rid = receipt.get("receipt_id", "")
+          print(f"JSON content_hash: {json_hash}")
+          print(f"JSON receipt_id:   {json_rid}")
+          if not json_hash or not json_rid:
+            print("❌ Missing hash fields in JSON receipt")
+            sys.exit(1)
+          print("✅ CBOR round-trip check passed (JSON hashes present and non-empty)")
+          EOF
+
+      - name: Report smoke result
+        if: always()
+        shell: bash
+        env:
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_PYTHON: ${{ matrix.python }}
+        run: |
+          echo "Smoke test complete on $MATRIX_OS / Python $MATRIX_PYTHON"
+
+  alert-on-failure:
+    name: Alert on smoke failure
+    needs: smoke
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open P0 alert issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.event.release.tag_name || github.event.inputs.version }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_SERVER_URL: ${{ github.server_url }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "🚨 P0: Release smoke test FAILED for ${VERSION}" \
+            --body "## Smoke test failure — P0 alert
+
+          **Release**: ${VERSION}
+          **Triggered by**: ${GH_EVENT_NAME}
+          **Workflow run**: ${GH_SERVER_URL}/${GH_REPOSITORY}/actions/runs/${GH_RUN_ID}
+
+          ### Required actions (per [Release Health policy](docs/release-health.md))
+
+          - [ ] Identify which smoke check(s) failed (see workflow run above)
+          - [ ] Determine if the release should be yanked from PyPI
+          - [ ] Communicate workaround within 4h
+          - [ ] Publish fix or yank within 24h
+          - [ ] Publish RCA within 48h
+
+          /cc @InvariantSystems" \
+            --label "P0,release-health"

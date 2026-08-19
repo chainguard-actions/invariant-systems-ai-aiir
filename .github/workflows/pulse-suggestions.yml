@@ -1,0 +1,189 @@
+# Automate intake and implementation scaffolding for "pulse" improvement suggestions.
+#
+# Flow:
+#  1. A pulse issue is opened with the `[Pulse]` title prefix, or a maintainer
+#     adds the optional `pulse-suggestion` label.
+#  2. Workflow creates an implementation branch + plan artifact.
+#  3. Workflow runs required local-equivalent CI preflight.
+#  4. Workflow opens a PR for maintainer review; merge remains an explicit
+#     maintainer action after the required checks are green.
+name: Pulse Suggestions
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Existing pulse suggestion issue number"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  pulse-to-pr:
+    # Only trusted authors may trigger this write-capable automation via an
+    # issue — otherwise any user could open a '[Pulse]' issue to run a job with
+    # contents:write + pull-requests:write. workflow_dispatch already requires
+    # repo access.
+    if: |
+      (github.event_name == 'issues' &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && (
+          startsWith(github.event.issue.title, '[Pulse]') ||
+          contains(github.event.issue.labels.*.name, 'pulse-suggestion')
+      )) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Resolve issue context
+        id: ctx
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "issues" ]]; then
+            ISSUE_NUMBER="$EVENT_ISSUE_NUMBER"
+          else
+            ISSUE_NUMBER="$INPUT_ISSUE_NUMBER"
+          fi
+
+          if [[ -z "$ISSUE_NUMBER" ]]; then
+            echo "::error::issue_number is required"
+            exit 1
+          fi
+
+          issue_json="$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")"
+          labels_csv="$(jq -r '[.labels[].name] | join(",")' <<<"$issue_json")"
+          if ! jq -e '(.title | startswith("[Pulse]")) or any(.labels[]?; .name == "pulse-suggestion")' <<<"$issue_json" >/dev/null; then
+            echo "::error::Issue #$ISSUE_NUMBER is not a pulse suggestion. Use the [Pulse] title prefix or apply the pulse-suggestion label."
+            echo "labels=$labels_csv"
+            exit 1
+          fi
+
+          issue_title="$(jq -r '.title' <<<"$issue_json")"
+          issue_body="$(jq -r '.body // ""' <<<"$issue_json")"
+          safe_slug="$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-36)"
+          if [[ -z "$safe_slug" ]]; then
+            safe_slug="suggestion"
+          fi
+
+          branch_name="feat/pulse-${ISSUE_NUMBER}-${safe_slug}"
+
+          {
+            echo "issue_number=$ISSUE_NUMBER"
+            DELIM_TITLE="ghadelimiter_$(openssl rand -hex 16)"
+            echo "issue_title<<${DELIM_TITLE}"
+            printf '%s\n' "$issue_title"
+            echo "${DELIM_TITLE}"
+            DELIM_BODY="ghadelimiter_$(openssl rand -hex 16)"
+            echo "issue_body<<${DELIM_BODY}"
+            printf '%s\n' "$issue_body"
+            echo "${DELIM_BODY}"
+            echo "branch_name=$branch_name"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create implementation plan artifact
+        env:
+          ISSUE_NUMBER: ${{ steps.ctx.outputs.issue_number }}
+          ISSUE_TITLE: ${{ steps.ctx.outputs.issue_title }}
+          ISSUE_BODY: ${{ steps.ctx.outputs.issue_body }}
+        run: |
+          set -euo pipefail
+          mkdir -p .github/pulse
+          cat > ".github/pulse/${ISSUE_NUMBER}.md" <<EOF
+          # Pulse suggestion #${ISSUE_NUMBER}
+
+          ## Suggestion
+          **Title:** ${ISSUE_TITLE}
+
+          ${ISSUE_BODY}
+
+          ## Implementation hardening checklist
+          - [ ] Threat-model potential abuse and failure paths for this change.
+          - [ ] Implement the smallest safe change-set in code and docs.
+          - [ ] Add/expand deterministic tests for normal + edge-case behavior.
+          - [ ] Add property/adversarial tests where applicable.
+          - [ ] Run \
+            - \\`scripts/ci-local.sh required\\`
+            - \\`scripts/ci-local.sh full\\` (recommended for merge readiness)
+          - [ ] Document rationale, risks, and rollback strategy in PR notes.
+
+          ## Merge policy
+          This PR is generated automatically from a pulse suggestion and must
+          be reviewed by a maintainer before it is merged.
+          EOF
+
+      - name: Create branch and commit
+        id: commit
+        env:
+          BRANCH_NAME: ${{ steps.ctx.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          git switch -c "$BRANCH_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .github/pulse
+          if git diff --cached --quiet; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -s -m "feat: scaffold pulse suggestion implementation plan"
+          git push --set-upstream origin "$BRANCH_NAME"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run preflight checks before PR creation
+        if: steps.commit.outputs.created == 'true'
+        run: scripts/ci-local.sh required
+
+      - name: Create PR
+        if: steps.commit.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.ctx.outputs.issue_number }}
+          ISSUE_TITLE: ${{ steps.ctx.outputs.issue_title }}
+          BRANCH_NAME: ${{ steps.ctx.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+
+          pr_title="feat: implement pulse suggestion #${ISSUE_NUMBER}"
+          pr_body="## Summary
+          Automated PR generated from pulse suggestion #${ISSUE_NUMBER}.
+
+          - Suggestion: ${ISSUE_TITLE}
+          - Implementation scaffold: .github/pulse/${ISSUE_NUMBER}.md
+          - Preflight: scripts/ci-local.sh required
+
+          ## Review policy
+          This PR is opened for maintainer review. Merge remains a separate maintainer action after the required checks are green.
+
+          Closes #${ISSUE_NUMBER}"
+
+          pr_url="$(gh pr create \
+            --repo "$REPO" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "$pr_title" \
+            --body "$pr_body")"
+          echo "Created PR: $pr_url"

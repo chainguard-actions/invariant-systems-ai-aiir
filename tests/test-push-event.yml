@@ -1,0 +1,71 @@
+name: Test push event commit range detection
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Determine safe commit range
+        id: range
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "Total commits: $COUNT"
+          if [ "$COUNT" -ge 2 ]; then
+            RANGE="HEAD~1..HEAD"
+          else
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          fi
+          echo "Using range: $RANGE"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: ${{ steps.range.outputs.range }}
+        env:
+          GITHUB_EVENT_NAME: push
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert at least one receipt was generated
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if [ "$RECEIPT_COUNT" -lt 1 ]; then
+            echo "FAIL: expected at least 1 receipt for push event, got $RECEIPT_COUNT"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert signed_receipt_count is zero (signing disabled)
+        env:
+          SIGNED: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $SIGNED"
+          if [ "$SIGNED" != "0" ]; then
+            echo "FAIL: expected signed_receipt_count=0 when sign=false, got '$SIGNED'"
+            exit 1
+          fi
+          echo "PASS"

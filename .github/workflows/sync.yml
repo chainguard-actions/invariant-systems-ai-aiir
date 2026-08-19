@@ -1,0 +1,316 @@
+# Sync GitHub → GitLab and verify all distribution channels are aligned.
+#
+# Triggers:
+#   1. After "Publish" completes (success or failure) → mirror + verify
+#   2. Daily at 06:00 UTC → catch any drift from manual edits or partial failures
+#   3. Manual workflow_dispatch → on-demand health check
+#
+# Self-healing: if GitLab is behind, this workflow fast-forwards protected
+# `main`, force-updates the mutable `receipts` branch, mirrors tags, and prunes
+# non-canonical GitLab-only branches. If GitLab `main` has diverged
+# non-fast-forward or PyPI is behind, it alerts.
+name: Sync
+
+on:
+  push:
+    branches: [main]
+    tags-ignore: ['**']   # Tag pushes trigger via workflow_run from Publish
+  workflow_run:
+    workflows: ["Publish"]
+    types: [completed]
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write      # Auto-create issue on drift
+
+jobs:
+  # ── Step 1: Mirror canonical branches + tags to GitLab ────────────
+  mirror-gitlab:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    environment: automation-secrets
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push to GitLab mirror
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          git remote add gitlab "https://oauth2:${GITLAB_TOKEN}@gitlab.com/invariant-systems/aiir.git" 2>/dev/null || true
+
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+          echo "⏳ Mirroring canonical branches..."
+          for branch in main receipts; do
+            ref="refs/remotes/origin/${branch}"
+            if ! git show-ref --verify --quiet "$ref"; then
+              echo "::error::Canonical branch origin/${branch} is missing"
+              exit 1
+            fi
+            if [ "$branch" = "main" ]; then
+              git push gitlab "${ref}:refs/heads/${branch}"
+            else
+              git push gitlab --force "${ref}:refs/heads/${branch}"
+            fi
+          done
+
+          echo "⏳ Pruning non-canonical GitLab branches..."
+          remote_heads=$(git ls-remote --heads gitlab | awk '{print $2}' | sed 's#refs/heads/##')
+          for branch in $remote_heads; do
+            case "$branch" in
+              main|receipts)
+                ;;
+              *)
+                echo "Deleting stale GitLab branch: ${branch}"
+                git push gitlab --delete "$branch"
+                ;;
+            esac
+          done
+
+          echo "⏳ Mirroring tags..."
+          git push gitlab --tags --force
+
+          echo "✅ Mirror complete"
+
+  # ── Step 2: Verify all three channels agree ───────────────────────
+  verify-sync:
+    needs: mirror-gitlab
+    if: always()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check version alignment
+        id: drift
+        run: |
+          set +e  # Don't exit on individual failures; we want to report all drift
+
+          # Fetch all canonical branch refs so this job can compare GitHub and
+          # GitLab branch heads even though actions/checkout normally checks out
+          # only the triggering branch.
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune >/dev/null 2>&1
+
+          # ── Local version (source of truth) ──
+          LOCAL=$(python3 -c "
+          import re
+          text = open('aiir/__init__.py').read()
+          m = re.search(r'__version__\s*=\s*[\"\\x27]([^\"\\x27]+)', text)
+          print(m.group(1))
+          ")
+
+          # ── Latest git tag (semver only, ignore floating v1/v2 tags) ──
+          GH_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1 | sed 's/^v//' || echo "unknown")
+
+          # ── PyPI version ──
+          PYPI=$(python3 -c "
+          import json, urllib.request
+          try:
+              data = json.load(urllib.request.urlopen('https://pypi.org/pypi/aiir/json'))
+              print(data['info']['version'])
+          except Exception:
+              print('unknown')
+          ")
+
+          # ── GitLab latest tag (semver only, skip floating v1/v2 tags) ──
+          GL_TAG=$(python3 -c "
+          import json, re, urllib.request
+          try:
+              tags = json.load(urllib.request.urlopen('https://gitlab.com/api/v4/projects/80072388/repository/tags?order_by=version&sort=desc&per_page=20'))
+              for t in tags:
+                  if re.match(r'^v\d+\.\d+\.\d+', t['name']):
+                      print(t['name'].lstrip('v'))
+                      break
+              else:
+                  print('unknown')
+          except Exception:
+              print('unknown')
+          ")
+
+          # ── npm version (@invariantsystems/aiir) ──
+          NPM=$(python3 -c "
+          import json, urllib.request
+          try:
+              data = json.load(urllib.request.urlopen('https://registry.npmjs.org/@invariantsystems/aiir'))
+              print(data.get('dist-tags', {}).get('latest', 'unknown'))
+          except Exception:
+              print('unknown')
+          ")
+
+          echo ""
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║        AIIR Distribution Health Check        ║"
+          echo "╠══════════════════════════════════════════════╣"
+          printf "║  %-20s  %-21s ║\n" "Source" "Version"
+          echo "╠══════════════════════════════════════════════╣"
+          printf "║  %-20s  %-21s ║\n" "__init__.py" "$LOCAL"
+          printf "║  %-20s  %-21s ║\n" "GitHub tag" "$GH_TAG"
+          printf "║  %-20s  %-21s ║\n" "PyPI" "$PYPI"
+          printf "║  %-20s  %-21s ║\n" "GitLab tag" "$GL_TAG"
+          printf "║  %-20s  %-21s ║\n" "npm" "$NPM"
+          echo "╚══════════════════════════════════════════════╝"
+          echo ""
+
+          DRIFT=0
+
+          # Helper: compare MAJOR.MINOR.PATCH versions (stdlib only).
+          # Returns "ahead", "behind", "equal", or "unknown".
+          ver_cmp() {
+            python3 -c "
+          import sys
+          a, b = sys.argv[1], sys.argv[2]
+          if 'unknown' in (a, b):
+              print('unknown'); sys.exit()
+          try:
+              ta = tuple(int(x) for x in a.split('.'))
+              tb = tuple(int(x) for x in b.split('.'))
+          except (ValueError, AttributeError):
+              print('unknown'); sys.exit()
+          if ta > tb:   print('ahead')
+          elif ta < tb: print('behind')
+          else:         print('equal')
+          " "$1" "$2"
+          }
+
+          # __init__.py vs latest git tag
+          LOCAL_VS_TAG=$(ver_cmp "$LOCAL" "$GH_TAG")
+          if [ "$LOCAL_VS_TAG" = "behind" ]; then
+            echo "::error title=Version regression::__init__.py ($LOCAL) is BEHIND latest git tag ($GH_TAG)"
+            DRIFT=1
+          elif [ "$LOCAL_VS_TAG" = "ahead" ]; then
+            echo "::notice title=Pre-release::__init__.py ($LOCAL) is ahead of latest tag ($GH_TAG) — release pending"
+          elif [ "$LOCAL_VS_TAG" = "unknown" ] && [ "$LOCAL" != "$GH_TAG" ]; then
+            echo "::warning title=Version drift::__init__.py ($LOCAL) ≠ latest git tag ($GH_TAG)"
+            DRIFT=1
+          fi
+
+          # PyPI vs source
+          PYPI_VS_LOCAL=$(ver_cmp "$PYPI" "$LOCAL")
+          if [ "$PYPI" != "unknown" ] && [ "$PYPI_VS_LOCAL" = "ahead" ]; then
+            echo "::error title=PyPI drift::PyPI ($PYPI) is AHEAD of source ($LOCAL) — source may need a bump"
+            DRIFT=1
+          elif [ "$PYPI" != "unknown" ] && [ "$PYPI_VS_LOCAL" = "behind" ]; then
+            echo "::notice title=PyPI pending::PyPI ($PYPI) is behind source ($LOCAL) — publish pending"
+          elif [ "$PYPI" != "unknown" ] && [ "$PYPI_VS_LOCAL" = "unknown" ] && [ "$PYPI" != "$LOCAL" ]; then
+            echo "::warning title=PyPI drift::PyPI ($PYPI) ≠ source ($LOCAL)"
+            DRIFT=1
+          fi
+
+          # GitLab tag vs GitHub tag (these should always match after mirror)
+          if [ "$GL_TAG" != "unknown" ] && [ "$GL_TAG" != "$GH_TAG" ]; then
+            echo "::warning title=GitLab drift::GitLab ($GL_TAG) ≠ GitHub ($GH_TAG)"
+            DRIFT=1
+          fi
+
+          # GitLab branch heads must match the canonical public GitHub branches.
+          # Extra GitLab-only branches are drift, because they make the mirror
+          # look like an independent source of truth instead of a read-only copy.
+          GITLAB_REPO="https://gitlab.com/invariant-systems/aiir.git"
+          GL_HEADS=$(git ls-remote --heads "$GITLAB_REPO" 2>/dev/null)
+          if [ -z "$GL_HEADS" ]; then
+            echo "::warning title=GitLab branch drift::Unable to read GitLab branch heads"
+            DRIFT=1
+          else
+            for branch in main receipts; do
+              GH_SHA=$(git rev-parse "origin/${branch}" 2>/dev/null)
+              GL_SHA=$(printf '%s\n' "$GL_HEADS" | awk -v ref="refs/heads/${branch}" '$2 == ref {print $1}')
+              if [ -z "$GH_SHA" ]; then
+                echo "::error title=GitHub branch drift::origin/${branch} is missing"
+                DRIFT=1
+              elif [ -z "$GL_SHA" ]; then
+                echo "::warning title=GitLab branch drift::GitLab is missing ${branch}"
+                DRIFT=1
+              elif [ "$GH_SHA" != "$GL_SHA" ]; then
+                echo "::warning title=GitLab branch drift::${branch} differs: GitHub ${GH_SHA:0:8}, GitLab ${GL_SHA:0:8}"
+                DRIFT=1
+              fi
+            done
+
+            GL_EXTRA=$(printf '%s\n' "$GL_HEADS" | awk '{sub("refs/heads/","",$2); print $2}' | grep -Ev '^(main|receipts)$')
+            if [ -n "$GL_EXTRA" ]; then
+              echo "::warning title=GitLab stale branches::Non-canonical GitLab branches remain: $(echo "$GL_EXTRA" | tr '\n' ' ')"
+              DRIFT=1
+            fi
+          fi
+
+          # npm vs source (should match after publish pipeline)
+          NPM_VS_LOCAL=$(ver_cmp "$NPM" "$LOCAL")
+          if [ "$NPM" != "unknown" ] && [ "$NPM_VS_LOCAL" = "ahead" ]; then
+            echo "::error title=npm drift::npm ($NPM) is AHEAD of source ($LOCAL) — source may need a bump"
+            DRIFT=1
+          elif [ "$NPM" != "unknown" ] && [ "$NPM_VS_LOCAL" = "behind" ]; then
+            echo "::notice title=npm pending::npm ($NPM) is behind source ($LOCAL) — publish pending"
+          elif [ "$NPM" != "unknown" ] && [ "$NPM_VS_LOCAL" = "unknown" ] && [ "$NPM" != "$LOCAL" ]; then
+            echo "::warning title=npm drift::npm ($NPM) ≠ source ($LOCAL)"
+            DRIFT=1
+          fi
+
+          if [ "$DRIFT" -eq 0 ]; then
+            echo "✅ All channels in sync: v${LOCAL}"
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo ""
+            echo "⚠️  DRIFT DETECTED — see warnings above"
+            echo ""
+            echo "Self-healing actions taken:"
+            echo "  • GitLab main was fast-forwarded when possible"
+            echo "  • GitLab receipts branch and tags were force-pushed"
+            echo "  • Non-canonical GitLab branches were pruned"
+            echo "  • PyPI cannot be self-healed (immutable). If behind, create a new release."
+            echo "  • npm cannot be self-healed (immutable). If behind, create a new release."
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            echo "drift_summary=__init__.py=${LOCAL} GitHub=${GH_TAG} PyPI=${PYPI} GitLab=${GL_TAG} npm=${NPM}" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+  # ── Step 3: Auto-create issue on drift ────────────────────────────
+  alert-drift:
+    needs: verify-sync
+    if: failure()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create or update drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          EXISTING=$(gh issue list --repo "$GH_REPO" --label "version-drift" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GH_REPO" \
+              --body "🔄 Drift still detected — ${RUN_URL}"
+            exit 0
+          fi
+          gh issue create --repo "$GH_REPO" \
+            --title "🔄 Distribution channel version drift detected" \
+            --label "version-drift,automated,P1" \
+            --body "The Sync workflow detected version drift between distribution channels.
+
+          **Run**: ${RUN_URL}
+
+          Self-healing already attempted:
+          - ✅ GitLab main fast-forward attempted
+          - ✅ GitLab receipts branch and tags force-pushed
+          - ✅ Non-canonical GitLab branches pruned
+          - ❌ PyPI is immutable — if behind, a new patch release is needed
+          - ❌ npm is immutable — if behind, a new patch release is needed
+
+          Check the workflow run for the exact version table.
+
+          *This issue was created automatically by the Sync workflow.*"

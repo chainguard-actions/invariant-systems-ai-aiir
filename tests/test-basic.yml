@@ -1,0 +1,93 @@
+name: Test basic usage (no signing)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Determine safe commit range
+        id: range
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "Total commits: $COUNT"
+          if [ "$COUNT" -ge 2 ]; then
+            RANGE="HEAD~1..HEAD"
+          else
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          fi
+          echo "Using range: $RANGE"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: ${{ steps.range.outputs.range }}
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert ai_commit_count is a non-negative integer
+        env:
+          AI_COUNT: ${{ steps.action.outputs.ai_commit_count }}
+        run: |
+          echo "ai_commit_count: $AI_COUNT"
+          if ! echo "$AI_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: ai_commit_count is not a non-negative integer: '$AI_COUNT'"
+            exit 1
+          fi
+          echo "PASS: ai_commit_count=$AI_COUNT"
+
+      - name: Assert signed_receipt_count is zero (signing disabled)
+        env:
+          SIGNED: ${{ steps.action.outputs.signed_receipt_count }}
+        run: |
+          echo "signed_receipt_count: $SIGNED"
+          if [ "$SIGNED" != "0" ]; then
+            echo "FAIL: expected signed_receipt_count=0 when sign=false, got '$SIGNED'"
+            exit 1
+          fi
+          echo "PASS: signed_receipt_count=0 as expected"
+
+      - name: Assert unsigned_receipt_count equals receipt_count (signing disabled)
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+          UNSIGNED: ${{ steps.action.outputs.unsigned_receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          echo "unsigned_receipt_count: $UNSIGNED"
+          if [ "$UNSIGNED" != "$RECEIPT_COUNT" ]; then
+            echo "FAIL: expected unsigned_receipt_count=$RECEIPT_COUNT, got '$UNSIGNED'"
+            exit 1
+          fi
+          echo "PASS: unsigned_receipt_count=$UNSIGNED matches receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert receipts_overflow is false
+        env:
+          OVERFLOW: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipts_overflow: $OVERFLOW"
+          if [ "$OVERFLOW" = "true" ]; then
+            echo "FAIL: receipts_overflow should not be true for a small range"
+            exit 1
+          fi
+          echo "PASS: receipts_overflow=$OVERFLOW"

@@ -1,0 +1,84 @@
+name: Test output-dir option
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Determine safe commit range
+        id: range
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "Total commits: $COUNT"
+          if [ "$COUNT" -ge 2 ]; then
+            RANGE="HEAD~1..HEAD"
+          else
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          fi
+          echo "Using range: $RANGE"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: ${{ steps.range.outputs.range }}
+          output-dir: "test-receipts-output"
+        # Allow the step to continue even if upload-artifact fails under act
+        continue-on-error: true
+
+      - name: Assert receipt_count is a non-negative integer
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          if ! echo "$RECEIPT_COUNT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: receipt_count is not a non-negative integer: '$RECEIPT_COUNT'"
+            exit 1
+          fi
+          echo "PASS: receipt_count=$RECEIPT_COUNT"
+
+      - name: Assert output directory was created
+        run: |
+          echo "Checking for output directory: test-receipts-output"
+          if [ ! -d "test-receipts-output" ]; then
+            echo "FAIL: output directory 'test-receipts-output' was not created"
+            exit 1
+          fi
+          echo "PASS: output directory exists"
+
+      - name: Assert receipt JSON files were written to output directory
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          FILE_COUNT=$(find test-receipts-output -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+          echo "JSON files found: $FILE_COUNT"
+          if [ "$RECEIPT_COUNT" -gt 0 ] && [ "$FILE_COUNT" -eq 0 ]; then
+            echo "FAIL: expected $RECEIPT_COUNT JSON receipt files in output directory, found 0"
+            exit 1
+          fi
+          echo "PASS: found $FILE_COUNT JSON files for $RECEIPT_COUNT receipts"
+
+      - name: Assert receipts_json output is set
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          # receipts_json should be a JSON array (possibly empty [])
+          if [ -z "$RECEIPTS_JSON" ]; then
+            echo "FAIL: receipts_json output is empty"
+            exit 1
+          fi
+          echo "PASS: receipts_json is set"

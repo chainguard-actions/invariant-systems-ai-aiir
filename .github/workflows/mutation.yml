@@ -1,0 +1,212 @@
+# Mutation testing CI — validates test assertion quality.
+#
+# Runs mutation testing (mutmut) on security-critical modules to verify
+# that surviving mutants stay below an acceptable threshold.  This catches
+# weak assertions that pass on correct code but also pass on subtly wrong
+# code.
+#
+# Schedule: weekly (Sunday 04:00 UTC) + manual dispatch + PR.
+# Not included in the ci-ok gate because full mutation runs take ~20 min.
+# The PR path runs a focused smoke test across the main verification stack,
+# including the CBOR verifier modules.
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'   # Every Sunday at 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Minimum mutation kill rate (percent)'
+        required: false
+        default: '80'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'aiir/_verify.py'
+      - 'aiir/_detect.py'
+      - 'aiir/_policy.py'
+      - 'aiir/_receipt.py'
+      - 'aiir/_schema.py'
+      - 'aiir/_canonical_cbor.py'
+      - 'aiir/_verify_cbor.py'
+      - 'tests/**'
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Smoke test: focused verification mutation run (~5 min) ─────────
+  mutation-smoke:
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --require-hashes --no-deps -r .github/requirements/mutation.txt
+
+      - name: Run mutation smoke test (verify + CBOR verifier)
+        run: |
+          # Expand do_not_mutate to exclude everything except the focused
+          # verification modules that this smoke job is meant to exercise.
+          # (paths_to_mutate must stay ["aiir/"] so the whole package is copied)
+          python3 -c "
+          import re, subprocess, pathlib
+
+          cfg = pathlib.Path('pyproject.toml')
+          original = cfg.read_text()
+
+          # Build do_not_mutate list with all .py files except the targeted modules.
+          exclude = sorted(
+              f'aiir/{f.name}'
+              for f in pathlib.Path('aiir').glob('*.py')
+              if f.name not in {'_verify.py', '_canonical_cbor.py', '_verify_cbor.py'}
+          )
+          new_block = 'do_not_mutate = [\n' + ''.join(
+              f'    \"{e}\",\n' for e in exclude
+          ) + ']'
+
+          # Replace existing do_not_mutate block (multi-line TOML array)
+          patched = re.sub(
+              r'do_not_mutate\s*=\s*\[.*?\]',
+              new_block,
+              original,
+              flags=re.DOTALL,
+              count=1,
+          )
+          cfg.write_text(patched)
+
+          try:
+              subprocess.run(
+                  ['mutmut', 'run', '--max-children', '4'],
+                  check=False,
+              )
+          finally:
+              cfg.write_text(original)
+          "
+
+      - name: Check smoke mutation score
+        run: |
+          python3 -c "
+          import json, sys
+          from pathlib import Path
+          mutants_dir = Path('mutants/aiir')
+          if not mutants_dir.exists():
+              print('No mutation results found')
+              sys.exit(1)
+          killed = survived = 0
+          for meta in mutants_dir.glob('*.meta'):
+              data = json.loads(meta.read_text())
+              for code in data.get('exit_code_by_key', {}).values():
+                  if code is None: continue
+                  elif code == 0: survived += 1
+                  else: killed += 1
+          tested = killed + survived
+          if tested == 0:
+              print('No mutants tested')
+              sys.exit(1)
+          score = killed / tested * 100
+          print(f'Mutation score: {score:.1f}% ({killed}/{tested})')
+          # Smoke threshold is lenient — full run enforces stricter gate
+          if score < 75:
+              print(f'::error::Mutation score {score:.1f}% is below 75% threshold')
+              sys.exit(1)
+          print('✅ Smoke mutation score acceptable')
+          "
+
+  # ── Full mutation run (weekly + manual) ─────────────────────────────
+  mutation-full:
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --require-hashes --no-deps -r .github/requirements/mutation.txt
+
+      - name: Run full mutation test
+        run: |
+          mutmut run --max-children 4 || true
+
+      - name: Check mutation score against threshold
+        env:
+          THRESHOLD: ${{ github.event.inputs.threshold || '80' }}
+        run: |
+          python3 -c "
+          import json, sys, os
+          from pathlib import Path
+          threshold = float(os.environ.get('THRESHOLD', '80'))
+          mutants_dir = Path('mutants/aiir')
+          if not mutants_dir.exists():
+              print('No mutation results found')
+              sys.exit(1)
+          killed = survived = 0
+          module_stats = {}
+          for meta in sorted(mutants_dir.glob('*.meta')):
+              data = json.loads(meta.read_text())
+              stem = meta.stem
+              mk = ms = 0
+              for code in data.get('exit_code_by_key', {}).values():
+                  if code is None: continue
+                  elif code == 0: ms += 1; survived += 1
+                  else: mk += 1; killed += 1
+              module_stats[stem] = (mk, ms)
+          tested = killed + survived
+          if tested == 0:
+              print('No mutants tested')
+              sys.exit(1)
+          score = killed / tested * 100
+          print('═══ Mutation Testing Results ═══')
+          for name, (k, s) in module_stats.items():
+              t = k + s
+              mscore = k / t * 100 if t > 0 else 100
+              status = '✅' if mscore >= threshold else '⚠️'
+              print(f'  {status} {name}: {mscore:.1f}% ({k}/{t} killed)')
+          print()
+          print(f'Overall: {score:.1f}% ({killed}/{tested} killed)')
+          print(f'Threshold: {threshold}%')
+          if score < threshold:
+              print(f'::error::Mutation score {score:.1f}% is below {threshold}% threshold')
+              sys.exit(1)
+          print('✅ Mutation score meets threshold')
+          "
+
+      - name: Show survivors
+        if: always()
+        run: |
+          python3 -c "
+          import json
+          from pathlib import Path
+          mutants_dir = Path('mutants/aiir')
+          if not mutants_dir.exists(): exit(0)
+          found = False
+          for meta in sorted(mutants_dir.glob('*.meta')):
+              data = json.loads(meta.read_text())
+              for name, code in data.get('exit_code_by_key', {}).items():
+                  if code == 0:
+                      if not found:
+                          print('═══ Surviving Mutants ═══')
+                          found = True
+                      print(f'  SURVIVED: {name}')
+          if not found:
+              print('No survivors — all tested mutants killed! 🎯')
+          "

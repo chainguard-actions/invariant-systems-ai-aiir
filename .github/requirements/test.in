@@ -1,0 +1,10 @@
+# Pin pytest to the 8.x line; the universal lock keeps a single pytest across
+# the full 3.9–3.13 matrix and avoids an unintended major (9.x) bump on regen.
+pytest==8.3.5
+# hypothesis / markdown-it-py fork by Python version in the lock: their latest
+# releases dropped 3.9, so the < '3.10' branch pins the last 3.9-compatible
+# release while 3.10+ keeps current.
+hypothesis
+markdown-it-py
+mdurl
+rfc8785

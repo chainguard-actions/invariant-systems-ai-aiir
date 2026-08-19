@@ -1,0 +1,84 @@
+name: Test receipts_json output format
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Determine safe commit range
+        id: range
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "Total commits: $COUNT"
+          if [ "$COUNT" -ge 2 ]; then
+            RANGE="HEAD~1..HEAD"
+          else
+            EMPTY_TREE=$(git hash-object -t tree /dev/null)
+            RANGE="${EMPTY_TREE}..HEAD"
+          fi
+          echo "Using range: $RANGE"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          sign: "false"
+          commit-range: ${{ steps.range.outputs.range }}
+
+      - name: Assert receipts_json is non-empty
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json length: ${#RECEIPTS_JSON}"
+          if [ -z "$RECEIPTS_JSON" ]; then
+            echo "FAIL: receipts_json output is empty"
+            exit 1
+          fi
+          echo "PASS: receipts_json is set"
+
+      - name: Assert receipts_json is a valid JSON array or OVERFLOW
+        env:
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+        run: |
+          echo "receipts_json (first 200 chars): ${RECEIPTS_JSON:0:200}"
+          if [ "$RECEIPTS_JSON" = "OVERFLOW" ]; then
+            echo "PASS: receipts_json is OVERFLOW (too large)"
+            exit 0
+          fi
+          TMPFILE=$(mktemp)
+          printf '%s' "$RECEIPTS_JSON" > "$TMPFILE"
+          python3 -c "import json,sys; d=json.loads(open(sys.argv[1]).read()); assert isinstance(d,list), 'not a list: '+type(d).__name__; print('PASS: valid JSON array with '+str(len(d))+' items')" "$TMPFILE"
+          rm -f "$TMPFILE"
+
+      - name: Assert receipt count matches receipts_json array length
+        env:
+          RECEIPT_COUNT: ${{ steps.action.outputs.receipt_count }}
+          RECEIPTS_JSON: ${{ steps.action.outputs.receipts_json }}
+          OVERFLOW: ${{ steps.action.outputs.receipts_overflow }}
+        run: |
+          echo "receipt_count: $RECEIPT_COUNT"
+          echo "receipts_overflow: $OVERFLOW"
+          if [ "$OVERFLOW" = "true" ] || [ "$RECEIPTS_JSON" = "OVERFLOW" ]; then
+            echo "PASS: receipts_json overflowed, skipping length check"
+            exit 0
+          fi
+          TMPFILE=$(mktemp)
+          printf '%s' "$RECEIPTS_JSON" > "$TMPFILE"
+          ARRAY_LEN=$(python3 -c "import json,sys; print(len(json.loads(open(sys.argv[1]).read())))" "$TMPFILE" 2>/dev/null || echo "-1")
+          rm -f "$TMPFILE"
+          echo "array length: $ARRAY_LEN"
+          if [ "$ARRAY_LEN" != "$RECEIPT_COUNT" ]; then
+            echo "FAIL: receipts_json array length ($ARRAY_LEN) does not match receipt_count ($RECEIPT_COUNT)"
+            exit 1
+          fi
+          echo "PASS: array length=$ARRAY_LEN matches receipt_count=$RECEIPT_COUNT"

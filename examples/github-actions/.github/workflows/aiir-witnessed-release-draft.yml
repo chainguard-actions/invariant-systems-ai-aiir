@@ -1,0 +1,132 @@
+# AIIR Witnessed Release Bundle - draft example.
+#
+# Copy this workflow together with examples/witness-quorum/ into your own repo.
+# Replace the marked Rekor/witness acquisition step with your deployment-specific
+# client. AIIR only needs the finished offline files:
+#   - rekor-bundle.json
+#   - aiir-trust.json
+#   - witnessed-checkpoint.txt
+#   - VERIFY.md
+
+name: AIIR Witnessed Release Bundle
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish-offline-bundle:
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: "${{ github.event.release.tag_name || github.ref_name }}"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Download release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release release-assets release-input
+          gh release download "$TAG_NAME" \
+            --pattern '*.whl' \
+            --dir release \
+            --repo "${{ github.repository }}"
+          ARTIFACT="$(find release -maxdepth 1 -name '*.whl' | head -1)"
+          test -n "$ARTIFACT"
+          printf 'ARTIFACT=%s\n' "$ARTIFACT" >> "$GITHUB_ENV"
+
+      - name: Stage trust root and verifier guide
+        run: |
+          cp examples/witness-quorum/trust-root.example.json release-assets/aiir-trust.json
+          cp examples/witness-quorum/VERIFY.md release-assets/VERIFY.md
+
+      - name: Fetch Rekor v2 and witness material
+        run: |
+          echo 'Replace this step with your own Rekor v2 / witness client.' >&2
+          echo 'Expected outputs under release-input/:' >&2
+          echo '  body.json                  # exact Rekor entry body bytes' >&2
+          echo '  log-index.txt              # decimal log index' >&2
+          echo '  integrated-time.txt        # unix epoch seconds' >&2
+          echo '  tree-size.txt              # inclusion proof tree size' >&2
+          echo '  root-hash.b64              # base64 Merkle root from the signed checkpoint' >&2
+          echo '  inclusion-hashes.json      # JSON array of base64 inclusion hashes' >&2
+          echo '  checkpoint.txt             # raw signed log checkpoint note' >&2
+          echo '  witnessed-checkpoint.txt   # raw signed checkpoint note with witness cosignatures' >&2
+          echo 'Optional:' >&2
+          echo '  entry-uuid.txt             # Rekor UUID if you publish it' >&2
+          echo '  consistency-proof.json     # old_tree_size, new_tree_size, hashes[]' >&2
+          exit 1
+
+      - name: Assemble aiir.rekor.bundle.v1
+        run: |
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          artifact_path = Path(os.environ['ARTIFACT'])
+          input_dir = Path('release-input')
+          output_path = Path('release-assets/rekor-bundle.json')
+
+          body_bytes = (input_dir / 'body.json').read_bytes()
+          bundle = {
+              'schema': 'aiir.rekor.bundle.v1',
+              'log_id': 'rekor-v2-public',
+              'artifact_sha256': 'sha256:' + hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+              'body_b64': base64.b64encode(body_bytes).decode('ascii'),
+              'body_hash': 'sha256:' + hashlib.sha256(body_bytes).hexdigest(),
+              'log_index': int((input_dir / 'log-index.txt').read_text(encoding='utf-8').strip()),
+              'integrated_time': int((input_dir / 'integrated-time.txt').read_text(encoding='utf-8').strip()),
+              'inclusion_proof': {
+                  'tree_size': int((input_dir / 'tree-size.txt').read_text(encoding='utf-8').strip()),
+                  'root_hash': (input_dir / 'root-hash.b64').read_text(encoding='utf-8').strip(),
+                  'hashes': json.loads((input_dir / 'inclusion-hashes.json').read_text(encoding='utf-8')),
+                  'checkpoint': (input_dir / 'checkpoint.txt').read_text(encoding='utf-8'),
+              },
+          }
+
+          entry_uuid = input_dir / 'entry-uuid.txt'
+          if entry_uuid.exists():
+              bundle['entry_uuid'] = entry_uuid.read_text(encoding='utf-8').strip()
+
+          consistency = input_dir / 'consistency-proof.json'
+          if consistency.exists():
+              bundle['consistency_proof'] = json.loads(consistency.read_text(encoding='utf-8'))
+
+          output_path.write_text(json.dumps(bundle, indent=2) + '\n', encoding='utf-8')
+          PY
+          cp release-input/witnessed-checkpoint.txt release-assets/witnessed-checkpoint.txt
+
+      - name: Verify the offline bundle before publishing
+        run: |
+          python3 -m pip install aiir
+          aiir --artifact "$ARTIFACT" \
+            --rekor-bundle release-assets/rekor-bundle.json \
+            --trust-root release-assets/aiir-trust.json \
+            --witnessed-checkpoint release-assets/witnessed-checkpoint.txt \
+            --require-witnesses release
+
+      - name: Upload offline transparency assets to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$TAG_NAME" \
+            release-assets/rekor-bundle.json \
+            release-assets/aiir-trust.json \
+            release-assets/witnessed-checkpoint.txt \
+            release-assets/VERIFY.md \
+            --clobber \
+            --repo "${{ github.repository }}"

@@ -1,0 +1,28 @@
+# CODEOWNERS — require review for security-critical paths.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# The branch ruleset "main — production gate" enforces CODEOWNERS review.
+# Dependabot PRs are auto-approved for minor/patch updates.
+
+# Default: all changes require review from an org owner
+*                           @InvariantSystems
+
+# ── Security-critical (extra scrutiny) ──────────────────────────────
+# Cryptographic verification — supply chain integrity core
+aiir/_verify.py             @InvariantSystems
+aiir/_schema.py             @InvariantSystems
+aiir/_detect.py             @InvariantSystems
+
+# Security policy, threat model, and licensing
+SECURITY.md                 @InvariantSystems
+THREAT_MODEL.md             @InvariantSystems
+LICENSE                     @InvariantSystems
+
+# CI/CD workflows — supply chain attack surface
+.github/workflows/          @InvariantSystems
+.github/CODEOWNERS          @InvariantSystems
+.github/dependabot.yml      @InvariantSystems
+
+# GitHub Action definition — runs in user CI environments
+action.yml                  @InvariantSystems
+Dockerfile                  @InvariantSystems
