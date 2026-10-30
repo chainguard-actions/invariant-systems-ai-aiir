@@ -6,12 +6,12 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v1.4.0 | [`v1.4.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.4.0) | [`778bd61`](https://github.com/invariant-systems-ai/aiir/commit/778bd613a844b64f4cc1ac666b43031d2820f6b4) |
-| v1.5.1 | [`v1.5.1`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.5.1) | [`5393344`](https://github.com/invariant-systems-ai/aiir/commit/539334464187f27666550250d3c0cf0705ebfadd) |
-| v1.6.0 | [`v1.6.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.6.0) | [`9b519be`](https://github.com/invariant-systems-ai/aiir/commit/9b519bef034cf8e3292be17959cd0618f4e555ad) |
-| v1.7.0 | [`v1.7.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.7.0) | [`eff5fb5`](https://github.com/invariant-systems-ai/aiir/commit/eff5fb5e62e50f21facd5eb7dbf9d7ff26a3b562) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v1.4.0 | [`v1.4.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.4.0) | [`778bd61`](https://github.com/invariant-systems-ai/aiir/commit/778bd613a844b64f4cc1ac666b43031d2820f6b4) | [`HARDENING.md`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/blob/v1.4.0/HARDENING.md) |
+| v1.5.1 | [`v1.5.1`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.5.1) | [`5393344`](https://github.com/invariant-systems-ai/aiir/commit/539334464187f27666550250d3c0cf0705ebfadd) | [`HARDENING.md`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/blob/v1.5.1/HARDENING.md) |
+| v1.6.0 | [`v1.6.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.6.0) | [`9b519be`](https://github.com/invariant-systems-ai/aiir/commit/9b519bef034cf8e3292be17959cd0618f4e555ad) | [`HARDENING.md`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/blob/v1.6.0/HARDENING.md) |
+| v1.7.0 | [`v1.7.0`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/tree/v1.7.0) | [`eff5fb5`](https://github.com/invariant-systems-ai/aiir/commit/eff5fb5e62e50f21facd5eb7dbf9d7ff26a3b562) | [`HARDENING.md`](https://github.com/chainguard-actions/invariant-systems-ai-aiir/blob/v1.7.0/HARDENING.md) |
 
 ## Privacy
 
